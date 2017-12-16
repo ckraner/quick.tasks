@@ -330,6 +330,7 @@ quick.reg=function(my.model, myDF=my.found.df, SS.type=3, abbrev.length=15, pix.
   library(pixiedust)
   library(broom)
   library(car)
+  library(tidyr)
 
   #### Find type
   my.call=as.character(my.model$call)
@@ -773,12 +774,25 @@ quick.reg=function(my.model, myDF=my.found.df, SS.type=3, abbrev.length=15, pix.
       glance_stats=glance_stats[-7:-11,]
       glance_stats=glance_stats[-3,]
       glance_stats=glance_stats[-5,]
-    }else{
+    }else if(type=="glm"){
+      glance_stats=broom::glance(my.model)
+      glance_stats=tidyr::gather(glance_stats)
+
+
+      glance_stats[[3]]=c(capture.output(my.model$family),NA,NA,NA)
+      glance_stats[4:{5+v.p.rep}]=NA
+      glance_stats[6+v.p.rep]=c(glance_stats$key[3:6],NA,NA,NA)
+      glance_stats[7+v.p.rep]=c(glance_stats$value[3:6],NA,NA,NA)
+      glance_stats[[1]]=c("Null.dev","Chi-Sq","dF","Pr(>Chisq)",NA,NA,NA)
+      glance_stats[[2]]=c(glance_stats$value[1],ddeviance2,ddf2,pvalString(fit2,digits=3,format="default"),NA,NA,NA)
+      glance_stats=glance_stats[-5:-7,]
       # glance_stats2=as.data.frame(matrix(ncol=7,nrow=1))
       # glance_stats2[1,]=c(glance_stats$key[1],glance_stats$value[1],NA,NA,NA,glance_stats$key[6],glance_stats$value[6])
       # glance_stats2[2,]=c(glance_stats$key[2],glance_stats$value[2],NA,NA,NA,glance_stats$key[7],glance_stats$value[7])
       # glance_stats2[3,]=c(glance_stats$key[3],glance_stats$value[3],NA,NA,NA,glance_stats$key[4],glance_stats$value[4])
       # glance_stats=glance_stats2
+    }else{
+
     }
     #### For total
     the.length=the.length+1
@@ -891,6 +905,11 @@ quick.reg=function(my.model, myDF=my.found.df, SS.type=3, abbrev.length=15, pix.
         sprinkle_width(cols=6,width=68,width_units="pt")%>%
         sprinkle_width(cols=7,width=71,width_units="pt")%>%
         sprinkle(cols=2,halign="left",part="foot")
+    }else if(type=="glm"){
+      my.dust=pixiedust::redust(my.dust,glance_stats,part="foot")
+
+
+        #sprinkle(cols=3:{5+v.p.rep},merge=T,halign="center",part="foot")
     }else{
       # my.dust=pixiedust::redust(my.dust,glance_stats,part="foot")%>%
       #   sprinkle(cols=c(2,7),round=2,part="foot")%>%
