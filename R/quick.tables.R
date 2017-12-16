@@ -325,7 +325,7 @@ quick.contrast=function(my.model, SS.type=3, adjustment="bonferroni",test.stat="
 #' @examples
 #' quick.reg(my.model, myDF)
 
-quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, pix.int=T,pix.method="html",type=my.reg.type,test.stat="Wilks"){
+quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, abbrev.length=15, pix.int=T,pix.method="html",type=my.reg.type,test.stat="Wilks"){
   library(pixiedust)
   library(broom)
 
@@ -438,21 +438,21 @@ quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, pix.in
       my.total=sum(my.III.summary$`Sum Sq`[2:length(my.III.summary$`Sum Sq`)])
       my.df.total=sum(my.III.summary$Df[2:length(my.III.summary$Df)])
       total.intercepts=1
-      my.rownames=c(rownames(my.summary$coefficients),"Residuals","Total")
+      my.rownames=c(abbreviate(rownames(my.summary$coefficients),minlength = abbrev.length),"Residuals","Total")
     }else if(type=="glm"){
       #### Calculate model deviance stats
       ddeviance2=my.model$null.deviance-my.model$deviance
       ddf2=my.model$df.null-my.model$df.residual
       fit2=1-pchisq(ddeviance2,ddf2)
       total.intercepts=1
-      my.rownames=c(rownames(my.summary$coefficients),"Total")
+      my.rownames=c(abbreviate(rownames(my.summary$coefficients),minlength = abbrev.length),"Total")
     }else if(type=="ord"){
       my.temp.ord=update(my.model,~1)
       ddeviance2=my.model$logLik-my.temp.ord$logLik
       ddf2=my.model$edf-my.temp.ord$edf
       fit2=1-pchisq(ddeviance2,ddf2)
       total.intercepts=my.temp.ord$edf
-      my.rownames=c(rownames(my.summary$coefficients),"Total")
+      my.rownames=c(abbreviate(rownames(my.summary$coefficients),minlength=abbrev.length),"Total")
     }else{
       print("Error")
       return()
@@ -757,7 +757,7 @@ quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, pix.in
         sprinkle(rows=this.temp.var,cols=1:7,
                  border="bottom",border_color="black")%>%
         sprinkle(cols=c("sumsq","est","std.err","f.val"),round=2)%>%
-        sprinkle_colnames("Variable","Sums of Squares","df","Estimate","Std. Error","F-value","Pr(>F)")
+        sprinkle_colnames("Variable",paste("Type ",SS.type,"<br /> Sums of Squares",sep=""),"df","Estimate","Std. Error","F-value","Pr(>F)")
 
     }else if(type=="glm"){
       my.dust=pixiedust::dust(my.tables.df)%>%
