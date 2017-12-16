@@ -325,9 +325,11 @@ quick.contrast=function(my.model, SS.type=3, adjustment="bonferroni",test.stat="
 #' @examples
 #' quick.reg(my.model, myDF)
 
-quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, abbrev.length=15, pix.int=T,pix.method="html",type=my.reg.type,test.stat="Wilks"){
+quick.reg=function(my.model, myDF=my.found.df, SS.type=3, abbrev.length=15, pix.int=T,pix.method="html",
+                   type=my.reg.type,test.stat="Wilks",my.factor=NULL,part.eta=F,VIF=F){
   library(pixiedust)
   library(broom)
+  library(car)
 
   #### Find type
   my.call=as.character(my.model$call)
@@ -459,13 +461,35 @@ quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, abbrev
     }
 
 
-
+    if(!VIF & !part.eta){
+      v.p.len=7
+      v.p.rep=0
+    }else if(!VIF){
+      v.p.len=8
+      v.p.rep=1
+    }else if(!part.eta){
+      v.p.len=8
+      v.p.rep=1
+    }else{
+      v.p.len=9
+      v.p.rep=2
+    }
     my.std.error=c(my.coefficients$`Std. Error`,NA)
     my.estimate=c(my.coefficients$Estimate,NA)
-    my.tables.df=as.data.frame(matrix(ncol=7,nrow=1))
+    my.tables.df=as.data.frame(matrix(ncol=v.p.len,nrow=1))
 
     if(type=="lm"){
+      if(!VIF & !part.eta){
       names(my.tables.df)=c("rownames","sumsq","df","est","std.err","f.val","p.val")
+      }else if(!part.eta){
+        my.VIF=car::vif(my.model)
+        names(my.tables.df)=c("rownames","sumsq","df","est","std.err","f.val","p.val","VIF")
+      }else if(!VIF){
+        names(my.tables.df)=c("rownames","sumsq","df","est","std.err","f.val","p.val","p.eta")
+      }else{
+        my.VIF=car::vif(my.model)
+        names(my.tables.df)=c("rownames","sumsq","df","est","std.err","f.val","p.val","p.eta","VIF")
+      }
     }else{
       names(my.tables.df)=c("var","od.rat","std.err","z.val","dev","df","p.val")
     }
@@ -520,6 +544,8 @@ quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, abbrev
       #dang.length=7
     }
 
+
+
     while(this.shift.temp<dang.length){
 
       if(is.na(factor.rownames[my.factor.var])){
@@ -541,7 +567,7 @@ quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, abbrev
             my.std.err=my.std.error[this.shift.temp]
             my.f.val=my.III.summary$`F value`[this.shift.temp]
             my.p.val=my.III.summary$`Pr(>F)`[this.shift.temp]
-            my.tables.df[this.temp.var,]=c(my.rownames[this.shift.temp],my.sumsq,my.df,my.est,my.std.err,my.f.val,my.p.val)
+            my.tables.df[this.temp.var,]=c(my.rownames[this.shift.temp],my.sumsq,my.df,my.est,my.std.err,my.f.val,my.p.val,rep(NA,v.p.rep))
           }else{
             my.or=exp(my.estimate[this.shift.temp])
             my.est=my.estimate[this.shift.temp]
@@ -565,7 +591,7 @@ quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, abbrev
           my.z.val=NA
           my.f.val=my.III.summary$`F value`[this.shift.temp]
           my.p.val=my.III.summary$`Pr(>F)`[this.shift.temp]
-          my.tables.df[this.temp.var,]=c(my.factor[yet.another.var],my.sumsq,my.df,my.std.err,my.z.val,my.f.val,my.p.val)
+          my.tables.df[this.temp.var,]=c(my.factor[yet.another.var],my.sumsq,my.df,my.std.err,my.z.val,my.f.val,my.p.val,rep(NA,v.p.rep))
         }else if(type=="glm"){
           my.or=NA
           my.est=NA
@@ -603,7 +629,7 @@ quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, abbrev
               #### NEED TO FIX ####
               my.f.val={my.summary$coefficients[other.temp,3]^2}
               my.p.val=my.summary$coefficients[other.temp,4]
-              my.tables.df[this.temp.var,]=c(my.rownames[other.temp],my.sumsq,my.df,my.est,my.std.err,my.f.val,my.p.val)
+              my.tables.df[this.temp.var,]=c(my.rownames[other.temp],my.sumsq,my.df,my.est,my.std.err,my.f.val,my.p.val,rep(NA,v.p.rep))
             }else if(type=="glm"){
               my.or=exp(my.estimate[other.temp])
               my.est=my.estimate[other.temp]
@@ -656,7 +682,17 @@ quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, abbrev
           my.std.err=my.std.error[this.shift.temp]
           my.f.val=my.III.summary$`F value`[this.shift.temp]
           my.p.val=my.III.summary$`Pr(>F)`[this.shift.temp]
+          if(!VIF & !part.eta){
           my.tables.df[this.temp.var,]=c(rownames(my.III.summary)[this.shift.temp],my.sumsq,my.df,my.est,my.std.err,my.f.val,my.p.val)
+          }else if (!part.eta){
+            my.tables.df[this.temp.var,]=c(rownames(my.III.summary)[this.shift.temp],my.sumsq,my.df,my.est,my.std.err,my.f.val,my.p.val,my.VIF[this.shift.temp-1,1])
+          }else if(!VIF){
+            my.p.eta=my.sumsq/my.total
+            my.tables.df[this.temp.var,]=c(rownames(my.III.summary)[this.shift.temp],my.sumsq,my.df,my.est,my.std.err,my.f.val,my.p.val,my.p.eta)
+          }else{
+            my.p.eta=my.sumsq/my.total
+            my.tables.df[this.temp.var,]=c(rownames(my.III.summary)[this.shift.temp],my.sumsq,my.df,my.est,my.std.err,my.f.val,my.p.val,my.p.eta,my.VIF[this.shift.temp-1,1])
+          }
         }else if(type=="glm"){
           if(!is.null(my.factor)){
             this.shift.temp=this.shift.temp-ordinal.temp
@@ -697,8 +733,18 @@ quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, abbrev
     }
 
     if(type=="lm"){
-      my.tables.df[this.temp.var,]=c("Residuals",my.III.summary$`Sum Sq`[this.shift.temp],my.III.summary$Df[this.shift.temp],NA,NA,NA,NA)
-      my.tables.df[this.temp.var+1,]=c("Total",my.total,my.df.total,NA,NA,NA,NA)
+
+      my.tables.df[this.temp.var,]=c("Residuals",my.III.summary$`Sum Sq`[this.shift.temp],my.III.summary$Df[this.shift.temp],NA,NA,NA,NA,rep(NA,v.p.rep))
+      my.tables.df[this.temp.var+1,]=c("Total",my.total,my.df.total,NA,NA,NA,NA,rep(NA,v.p.rep))
+      if(!VIF & !part.eta){
+      }else if(!VIF){
+        my.tables.df$p.eta=as.numeric(my.tables.df$p.eta)
+      }else if(!part.eta){
+        my.tables.df$VIF=as.numeric(my.tables.df$VIF)
+      }else{
+        my.tables.df$p.eta=as.numeric(my.tables.df$p.eta)
+        my.tables.df$VIF=as.numeric(my.tables.df$VIF)
+      }
       my.tables.df$f.val=as.numeric(my.tables.df$f.val)
       my.tables.df$est=as.numeric(my.tables.df$est)
       my.tables.df$sumsq=as.numeric(my.tables.df$sumsq)
@@ -721,9 +767,9 @@ quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, abbrev
       glance_stats=tidyr::gather(glance_stats)
 
 
-      glance_stats[3:5]=NA
-      glance_stats[6]=c(glance_stats$key[7:8],NA,glance_stats$key[9:11],NA,NA,NA,NA,NA)
-      glance_stats[7]=c(glance_stats$value[7:8],NA,glance_stats$value[9:11],NA,NA,NA,NA,NA)
+      glance_stats[3:{5+v.p.rep}]=NA
+      glance_stats[6+v.p.rep]=c(glance_stats$key[7:8],NA,glance_stats$key[9:11],NA,NA,NA,NA,NA)
+      glance_stats[7+v.p.rep]=c(glance_stats$value[7:8],NA,glance_stats$value[9:11],NA,NA,NA,NA,NA)
       glance_stats=glance_stats[-7:-11,]
       glance_stats=glance_stats[-3,]
       glance_stats=glance_stats[-5,]
@@ -743,21 +789,53 @@ quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, abbrev
 
 
     if(type=="lm"){
+
       my.dust=pixiedust::dust(my.tables.df)%>%
         sprinkle(cols="p.val",fn=quote(pvalString(value,digits=3,format="default")))%>%
         sprinkle_print_method(pix.method)%>%
         sprinkle_na_string()%>%
-        sprinkle(cols=c(2,3,4,5,6,7),pad=5)%>%
-        sprinkle(rows=1:the.length,cols=1:7,
+        sprinkle(rows=1:the.length,cols=1:v.p.len,
                  border="right",border_color="black")%>%
         sprinkle(rows=1:the.length,cols=1,
                  border="left",border_color="black")%>%
-        sprinkle(rows=1,cols=1:7,
+        sprinkle(rows=1,cols=1:v.p.len,
                  border=c("top","bottom","left","right"),border_color="black",part="head")%>%
-        sprinkle(rows=this.temp.var,cols=1:7,
-                 border="bottom",border_color="black")%>%
-        sprinkle(cols=c("sumsq","est","std.err","f.val"),round=2)%>%
-        sprinkle_colnames("Variable",paste("Type ",SS.type,"<br /> Sums of Squares",sep=""),"df","Estimate","Std. Error","F-value","Pr(>F)")
+        sprinkle(rows=this.temp.var,cols=1:v.p.len,
+                 border="bottom",border_color="black")
+
+      if(!VIF & !part.eta){
+        my.dust=my.dust%>%
+          sprinkle(cols=c("sumsq","est","std.err","f.val"),round=2)%>%
+          sprinkle(cols=c(2,3,4,5,6,7),pad=5)%>%
+          sprinkle_colnames("Variable",paste("Type ",SS.type,"<br /> Sums of Sq",sep=""),"df","Estimate","Std. Error","F-value","Pr(>F)")%>%
+          sprinkle_align(rows=1,halign="center",part="head")%>%
+          sprinkle_pad(rows=1,pad=5,part="head")
+
+      }else if(!VIF){
+        my.dust=my.dust%>%
+          sprinkle(cols=c("sumsq","est","std.err","f.val","p.eta"),round=2)%>%
+          sprinkle(cols=c(2,3,4,5,6,7,8),pad=5)%>%
+          sprinkle_colnames("Variable",paste("Type ",SS.type,"<br /> Sums of Sq",sep=""),"df","Estimate","Std. Error","F-value","Pr(>F)","Part <br /> eta")%>%
+          sprinkle_align(rows=1,halign="center",part="head")%>%
+          sprinkle_pad(rows=1,pad=5,part="head")
+
+      }else if(!part.eta){
+        my.dust=my.dust%>%
+          sprinkle(cols=c("sumsq","est","std.err","f.val","VIF"),round=2)%>%
+          sprinkle(cols=c(2,3,4,5,6,7,8),pad=5)%>%
+          sprinkle_colnames("Variable",paste("Type ",SS.type,"<br /> Sums of Sq",sep=""),"df","Estimate","Std. Error","F-value","Pr(>F)","VIF")%>%
+          sprinkle_align(rows=1,halign="center",part="head")%>%
+          sprinkle_pad(rows=1,pad=5,part="head")
+
+      }else{
+        my.dust=my.dust%>%
+          sprinkle(cols=c("sumsq","est","std.err","f.val","p.eta","VIF"),round=2)%>%
+          sprinkle(cols=c(2,3,4,5,6,7,8),pad=5)%>%
+          sprinkle_colnames("Variable",paste("Type ",SS.type,"<br /> Sums of Sq",sep=""),"df","Estimate","Std. Error","F-value","Pr(>F)","Part <br /> eta","VIF")%>%
+          sprinkle_align(rows=1,halign="center",part="head")%>%
+          sprinkle_pad(rows=1,pad=5,part="head")
+
+      }
 
     }else if(type=="glm"){
       my.dust=pixiedust::dust(my.tables.df)%>%
@@ -801,11 +879,11 @@ quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, abbrev
 
     if(type=="lm"){
       my.dust=pixiedust::redust(my.dust,glance_stats,part="foot")%>%
-        sprinkle(cols=c(2,7),round=3,part="foot")%>%
-        sprinkle(cols=3:5,replace=c("","","","","","","","","","","",""),part="foot")%>%
+        sprinkle(cols=c(2,{7+v.p.rep}),round=3,part="foot")%>%
+        sprinkle(cols=3:{5+v.p.rep},replace=c("","","","","","","","","","","","",rep("",4*v.p.rep)),part="foot")%>%
         sprinkle(cols=1, replace=c("R-Square","Adj R-Sq","F-Statistic","P-Value"),part="foot")%>%
         sprinkle(cols=2,rows=4,fn=quote(pvalString(value,digits=3,format="default")),part="foot")%>%
-        sprinkle(cols=1:7,rows=1,halign="center",part="head")%>%
+        sprinkle(cols=1:v.p.len,rows=1,halign="center",part="head")%>%
         sprinkle_width(cols=1,width=90,width_units="pt")%>%
         sprinkle_width(cols=2,width=108,width_units="pt")%>%
         sprinkle_width(cols=4,width=62,width_units="pt")%>%
