@@ -325,17 +325,27 @@ quick.contrast=function(my.model, SS.type=3, adjustment="bonferroni",test.stat="
 #' @examples
 #' quick.reg(my.model, myDF)
 
-quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, pix.int=T,pix.method="html",type=my.reg.type,test.stat="Wilks"){
+quick.reg.table=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, pix.int=T,pix.method="html",type=my.reg.type,test.stat="Wilks"){
   library(pixiedust)
   library(broom)
 
   #### Find type
   my.call=as.character(my.model$call)
   my.split.call=strsplit(my.call,"\\(")
-  my.reg.type=my.split.call[[1]][1]
-
+  my.reg.type2=my.split.call[[1]][1]
+  if(my.reg.type2=="lm" | my.reg.type2 == "stats::lm"){
+    my.reg.type="lm"
+  }else if(my.reg.type2=="glm" | my.reg.type2== "stats::glm"){
+    my.reg.type="glm"
+  }else if(my.reg.type2=="manova" | my.reg.type2=="stats::manova"){
+    my.reg.type="manova"
+  }else if(my.reg.type2=="clm" | my.reg.type2=="ordinal::clm"){
+    my.reg.type="ord"
+  }else{
+    stop("Type not supported")
+  }
   my.found.df=my.model$call$data
-  if(is.null(my.found.df) | is.na(my.found.df)){
+  if(is.null(my.found.df)){
     stop(paste("No data frame found"))
   }
 
