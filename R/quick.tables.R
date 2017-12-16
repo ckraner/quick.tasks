@@ -7,25 +7,27 @@
 
 #' Contrast Tables in Pixiedust
 #'
-#' Beautiful tables adding sums of squares
-#' and p-value formatting, then giving html or
-#' latex output. If interactive and HTML, will show up
-#' in viewer.
+#' Beautiful tables using PHIA and PixieDust
+#' for lm, glm, and mancova.
 #'
-#' @param my.model Model. NOTE: If have factors, please place them first in the regression.
-#' @param myDF Dataframe
-#' @param my.factor If there are any factors, list them here.
-#' @param SS.type Type of sums of squares to report (default = 3)
+#' @param my.model Model.
+#' @param SS.type Type of sums of squares to report, either 2 or 3. (default = 3)
+#' @param adjustment P-value adjustment sent to p.adjust (default = "bonferroni")
+#' @param test.stat Character string giving the type of test statistic to be used (in MANOVA). (default="Wilks")
+#' @param abbrev.length Integer telling how long of a label is too long. Longer than this and will be condensed (default=15)
 #' @param pix.int Should this be viewable or is this for a document/dashboard? (default=T)
 #' @param pix.method Print method. (default="html")
 #' @param manova Is this a MAN(C)OVA?
+#' @param my.factors If you only want some of the factors, use this. Otherwise, factors are pulled from the regression model
+#' @param my.type If you have problems, you can specify the regression type. This is pulled from the model
 #' @return Either pixiedust object or code (in HTML or LaTeX) for table
 #' @keywords Explore
 #' @export
 #' @examples
-#' quick.reg(my.model, myDF)
+#' quick.contrast(my.model)
 
-quick.contrast=function(my.model, SS.type=3, test.stat="Wilks",adjustment="bonferroni", abbrev.length=15, pix.int=T,pix.method="html",num.non.var=my.non.var, my.factors=my.contrasts,my.type=my.reg.type){
+quick.contrast=function(my.model, SS.type=3, adjustment="bonferroni",test.stat="Wilks", abbrev.length=15, pix.int=T,pix.method="html",
+                        my.factors=my.contrasts,my.type=my.reg.type){
 
   #### Find type
   my.call=as.character(my.model$call)
