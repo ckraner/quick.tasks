@@ -325,7 +325,7 @@ quick.contrast=function(my.model, SS.type=3, adjustment="bonferroni",test.stat="
 #' @examples
 #' quick.reg(my.model, myDF)
 
-quick.reg.table=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, pix.int=T,pix.method="html",type=my.reg.type,test.stat="Wilks"){
+quick.reg=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, pix.int=T,pix.method="html",type=my.reg.type,test.stat="Wilks"){
   library(pixiedust)
   library(broom)
 
@@ -341,6 +341,7 @@ quick.reg.table=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, 
     my.reg.type="manova"
   }else if(my.reg.type2=="clm" | my.reg.type2=="ordinal::clm"){
     my.reg.type="ord"
+    library(ordinal)
   }else{
     stop("Type not supported")
   }
@@ -419,13 +420,18 @@ quick.reg.table=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, 
     my.summary=summary(my.model)
     my.coefficients=my.summary$coefficients
     my.coefficients=as.data.frame(my.coefficients)
+    if(type=="ord" & length(my.model$model)==1){
+      my.III.summary=NULL
+      the.length=length(my.model$y.levels)-1
+    }else{
     my.III.summary=car::Anova(my.model,type=SS.type)
+
     if(type=="glm" & is.null(my.factor)){
       the.length=dim(my.III.summary)[1]+1
     }else{
       the.length=dim(my.III.summary)[1]
     }
-
+}
 
     if(type=="lm"){
       #### Calculate total SS
@@ -821,6 +827,7 @@ quick.reg.table=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, 
 
   }
 }
+
 
 
 #' PixieDust Tables for Lavaan
