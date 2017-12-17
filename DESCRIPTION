@@ -1,12 +1,26 @@
 Package: quick.tasks
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Quick implementation of tables, figures, and other helper functions for quick analysis.
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Authors@R: person("Kraner","Christopher",email="ckraner19@gmail.com",role=c("aut","cre"))
+Description: Includes basic visualization implementations for tables from regression analyses. 
+    Using PixieDust, LaTeX or HTML tables are output. Multiple summaries and results are included
+    in tables to more reflect what an analyst would need. Several extended options for tables are 
+    also included (VIM, partial eta, glance stats, etc.). In addition, several helper functions for 
+    tasks such as saving plots and seeing labels are included.
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.0.1
+Imports: pixiedust,
+    broom,
+    car,
+    tidyr,
+    phia,
+    reshape2,
+    grid,
+    ggplot2
+Suggests: ordinal,
+    ordinal
+    
+    
