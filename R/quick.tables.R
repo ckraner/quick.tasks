@@ -547,12 +547,15 @@ quick.contrast = function(my.model,
 #' in viewer.
 #'
 #' @param my.model Model. NOTE: If have factors, please place them first in the regression.
-#' @param myDF Dataframe
+#' @param VIF include Variable Inflation Factor? (calculated by car::vif) (default=F)
+#' @param part.eta If lm, include partial eta square by calculating SS_part/SS_total? (default=F)
+#' @param myDF Dataframe, not needed if use data= in call
 #' @param my.factor If there are any factors, list them here.
 #' @param SS.type Type of sums of squares to report (default = 3)
 #' @param pix.int Should this be viewable or is this for a document/dashboard? (default=T)
 #' @param pix.method Print method. (default="html")
 #' @param type Type of regression? Currently supported: lm, glm (binary), manova
+#' @param do.glance Include glance stats?
 #' @return Either pixiedust object or code (in HTML or LaTeX) for table
 #' @keywords Explore
 #' @export
@@ -560,6 +563,8 @@ quick.contrast = function(my.model,
 #' quick.reg(my.model, myDF)
 
 quick.reg = function(my.model,
+                     part.eta = F,
+                     VIF = F,
                      myDF = my.found.df,
                      SS.type = 3,
                      abbrev.length = ab.len,
@@ -568,8 +573,6 @@ quick.reg = function(my.model,
                      type = my.reg.type,
                      test.stat = "Wilks",
                      my.factor = NULL,
-                     part.eta = F,
-                     VIF = F,
                      do.glance=T) {
   library(pixiedust)
   library(broom)
