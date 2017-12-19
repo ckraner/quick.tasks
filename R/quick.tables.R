@@ -882,31 +882,17 @@ quick.reg = function(my.model,
       new.df=my.model$model
       new.model=update(my.model,data=new.df)
       null.model=update(new.model,~1)
-      vars.df=new.model$df.null-new.model$df.residual
-      if(vars.df==0){
-        stop("This is the null model.")
-      }
+
+      total.intercepts = 1
+
+
       resid.dev=new.model$deviance
       resid.df=new.model$df.residual
-      vars.dev=anova(new.model,test="Chi")$Deviance
-      vars.dev.df=anova(new.model,test="Chi")$Df
-      vars.dev.p=anova(new.model,test="Chi")$`Pr(>Chi)`
-      vars.names=rownames(anova(new.model,test="Chi"))
+      vars.dev=anova(new.model,test="Chi")$Deviance[-1]
+      vars.dev.df=anova(new.model,test="Chi")$Df[-1]
+      vars.dev.p=anova(new.model,test="Chi")$`Pr(>Chi)`[-1]
       total.dev=new.model$null.deviance-new.model$deviance
       vars.dev.total=sum(vars.dev)
-      total.df=sum(vars.dev.df,na.rm = T)
-
-      vars.or=exp(coef(new.model))
-      vars.or.confint=exp(confint(new.model,type="Wald"))
-      my.names=abbreviate(names(vars.or),minlength=abbrev.length)
-      total.intercepts = 1
-    } else if (type == "ord") {
-      new.df=my.model$model
-      new.model=update(my.model,data=new.df)
-      null.model=update(new.model,~1)
-
-      total.intercepts = null.model$edf
-
 
       my.vars=strsplit(as.character(new.model$formula),"~")
       my.dep.var=my.vars[[2]]
@@ -925,7 +911,114 @@ quick.reg = function(my.model,
       my.null.model.z=summary(null.model)$coefficients[1:total.intercepts,3]^2
       my.full.dev=sum(my.full.model.z)
       my.null.dev=sum(my.null.model.z)
-      my.int.dev.total=total.intercepts*{my.full.dev-my.null.dev}
+      my.int.dev.total=abs(total.intercepts*{my.full.dev-my.null.dev})
+      my.int.dev=summary(new.model)$coefficients[1:total.intercepts,2]^2
+
+      treat.dev=anova(null.model,new.model)$`Deviance`[2]
+
+      #vars.dev.df=drop1(new.model,test="Chi")$Df[-1]
+      #vars.dev.p=drop1(new.model,test="Chi")$`Pr(>Chi)`[-1]
+      #total.dev=-2*{as.integer(levels(null.model$info$logLik)[1])-as.integer(levels(new.model$info$logLik)[1])}
+      total.dev.change=treat.dev+my.int.dev.total
+      total.dev.change.df=total.intercepts*vars.dev.df
+
+      resid.dev=-2*new.model$logLik
+      total.dev=total.dev.change+resid.dev
+
+      vars.dev.df=anova(new.model,test="Chi")$Df
+
+      total.df=resid.df+total.intercepts+vars.dev.df
+
+
+
+
+      my.int.dev.df=max({total.intercepts*sum(vars.dev.df,na.rm = T)-sum(vars.dev.df,na.rm=T)},1)
+      my.int.dev.or=exp(coef(new.model))[1:{total.intercepts}]
+      my.int.dev.or.confint=exp(confint(new.model,type="Wald"))[1:total.intercepts,]
+      my.int.names=abbreviate(names(my.int.dev.or),minlength=abbrev.length)
+
+      resid.df=total.df-total.dev.change.df
+      resid.dev=new.model$deviance
+      resid.df=new.model$df.residual
+      vars.dev=anova(new.model,test="Chi")$Deviance
+
+      vars.dev.p=anova(new.model,test="Chi")$`Pr(>Chi)`
+      vars.names=rownames(anova(new.model,test="Chi"))
+      total.dev=new.model$null.deviance-new.model$deviance
+      vars.dev.total=sum(vars.dev)
+      total.df=sum(vars.dev.df,na.rm = T)
+
+      vars.or=exp(coef(new.model))
+      vars.or.confint=exp(confint(new.model,type="Wald"))
+      my.names=abbreviate(names(vars.or),minlength=abbrev.length)
+      #vars.or=exp(coef(new.model))[-1]
+      #vars.or.confint=exp(confint(new.model,type="Wald"))[-1,]
+
+      #
+
+      #
+      # vars.df=new.model$df.null-new.model$df.residual
+      # # vars.df=new.model$df.null-new.model$df.residual
+      # if(vars.df==0){
+      #   stop("This is the null model.")
+      # }
+      # vars.dev=summary(new.model)$coefficients[{total.intercepts+1}:dim(summary(new.model)$coefficients)[1],3]^2
+      # vars.dev.p=summary(new.model)$coefficients[{total.intercepts+1}:dim(summary(new.model)$coefficients)[1],4]
+      #
+      # vars.dev.df=NULL
+      # weird.var=2
+      # track.var=1
+      # while(weird.var<=dim(new.model$model)[2]){
+      #   if(is.factor(new.model$model[[weird.var]])){
+      #     vars.dev.df[track.var]=length(levels(new.model$model[[weird.var]]))-1
+      #   }else{
+      #     vars.dev.df[track.var]=1
+      #   }
+      #   weird.var=weird.var+1
+      #   track.var=track.var+1
+      # }
+      #
+      # ### interaction effects
+      # weird.var=weird.var+total.intercepts-1
+      # while(weird.var<=dim(summary(new.model)$coefficients)[1]){
+      #   vars.dev.df[track.var]=1
+      #   weird.var=weird.var+1
+      #   track.var=track.var+1
+      # }
+      #
+      # vars.df.total=sum(vars.dev.df)
+
+      #
+      # vars.or=exp(coef(new.model))[{vars.df+1}:length(coef(new.model))]
+      # vars.or.confint=exp(confint(new.model,type="Wald"))[{vars.df+1}:length(coef(new.model)),]
+
+
+    } else if (type == "ord" | type =="glm2") {
+      new.df=my.model$model
+      new.model=update(my.model,data=new.df)
+      null.model=update(new.model,~1)
+
+      total.intercepts = null.model$edf
+      my.summary=summary(new.model)
+
+      my.vars=strsplit(as.character(new.model$formula),"~")
+      my.dep.var=my.vars[[2]]
+      my.other.vars=names(new.model$model)
+      my.var.grep=grep(paste("^",my.dep.var,"$",sep=""),my.other.vars)
+      my.other.vars=my.other.vars[-my.var.grep]
+      my.formula=paste("~",my.other.vars[1])
+      for(i in 2:length(my.other.vars)){
+        my.formula=paste(my.formula,"*",my.other.vars[i],sep="")}
+
+      #### FULL MODEL THING ####
+      my.full.model=update(new.model,my.formula)
+
+
+      my.full.model.z=summary(my.full.model)$coefficients[1:total.intercepts,3]^2
+      my.null.model.z=summary(null.model)$coefficients[1:total.intercepts,3]^2
+      my.full.dev=sum(my.full.model.z)
+      my.null.dev=sum(my.null.model.z)
+      my.int.dev.total=abs(total.intercepts*{my.full.dev-my.null.dev})
       my.int.dev=summary(new.model)$coefficients[1:total.intercepts,2]^2
 
       vars.df=new.model$edf-null.model$edf
@@ -958,32 +1051,37 @@ quick.reg = function(my.model,
         track.var=track.var+1
       }
 
-      vars.df.total=sum(vars.dev.df)
+      vars.df.total=sum(vars.dev.df,na.rm = T)
       treat.dev=anova(null.model,new.model)$`LR.stat`[2]
 
       #vars.dev.df=drop1(new.model,test="Chi")$Df[-1]
       #vars.dev.p=drop1(new.model,test="Chi")$`Pr(>Chi)`[-1]
       #total.dev=-2*{as.integer(levels(null.model$info$logLik)[1])-as.integer(levels(new.model$info$logLik)[1])}
       total.dev.change=treat.dev+my.int.dev.total
+      if(total.intercepts>1){
       total.dev.change.df=total.intercepts*vars.df.total
+      }else{
+        total.dev.change.df=vars.df.total+total.intercepts
+      }
 
       resid.dev=-2*new.model$logLik
       total.dev=total.dev.change+resid.dev
 
 
-      total.df=resid.df+total.intercepts+vars.df
+      total.df=dim(myDF)[1]
+      resid.df=total.df-total.dev.change.df
 
       vars.or=exp(coef(new.model))[{null.model$edf+1}:length(coef(new.model))]
       vars.or.confint=exp(confint(new.model,type="Wald"))[{null.model$edf+1}:length(coef(new.model)),]
       my.names=abbreviate(names(vars.or),minlength=abbrev.length)
 
 
-      my.int.dev.df={total.intercepts*sum(vars.df,na.rm = T)-sum(vars.df,na.rm=T)}
+      my.int.dev.df=max({total.intercepts*sum(vars.df,na.rm = T)-sum(vars.df,na.rm=T)},1)
       my.int.dev.or=exp(coef(new.model))[1:{null.model$edf}]
       my.int.dev.or.confint=exp(confint(new.model,type="Wald"))[1:null.model$edf,]
       my.int.names=abbreviate(names(my.int.dev.or),minlength=abbrev.length)
 
-      resid.df=total.df-total.dev.change.df
+
     } else{
       print("Error")
       return()
@@ -993,6 +1091,8 @@ quick.reg = function(my.model,
     if(type=="glm" & !is.null(my.factor)){
     my.phia.reg=quick.contrast(new.model,skip.me=T,adjustment = adjustment,SS.type = SS.type,abbrev.length = abbrev.length,my.factors = my.factor)
     my.phia.rownames=my.phia.reg$names
+    phia.dev=my.phia.reg$Chisq
+
     }
     if (!VIF & !part.eta) {
       v.p.len = 7
@@ -1144,7 +1244,7 @@ quick.reg = function(my.model,
       }
       if (this.shift.temp == 1) {
         i = 1
-        if(type=="ord"){
+        if(type=="ord" | type=="glm"){
           my.tables.df[this.temp.var, ] = c(
             "Intercept Change",
             NA,
@@ -1189,16 +1289,16 @@ quick.reg = function(my.model,
 
             my.tables.df[this.temp.var, ] = c(
               "Intercept",
-              NA,
-              NA,
-              NA,
-              summary(new.model)$coefficients[1,3]^2,
+              my.int.dev.or[i],
+              my.int.dev.or.confint[1],
+              my.int.dev.or.confint[2],
+              my.int.dev[i],
               1,
-              summary(new.model)$coefficients[1,4],
+              NA,
               rep(NA, v.p.rep))
 
-            this.temp.var=this.temp.var+1
-              my.tables.df[this.temp.var,]=c("Treatment",NA,NA,NA,total.dev,total.df,dchisq(total.dev,total.df),rep(NA,v.p.rep))
+            #this.temp.var=this.temp.var+1
+              #my.tables.df[this.temp.var,]=c("Treatment",NA,NA,NA,total.dev,total.df,dchisq(total.dev,total.df),rep(NA,v.p.rep))
 
           }else{
             my.tables.df[this.temp.var, ] = c(
@@ -1219,7 +1319,7 @@ quick.reg = function(my.model,
           i = i + 1
 
         }
-        if(type=="ord"){
+        if(type=="ord" | type=="glm"){
         my.tables.df[this.temp.var,]=c("Treatment Change",NA,NA,NA,treat.dev,vars.df,pchisq(treat.dev,vars.df,lower.tail = F))
         this.temp.var=this.temp.var+1
         }
@@ -1242,20 +1342,21 @@ quick.reg = function(my.model,
             my.p.val,
             rep(NA, v.p.rep)
           )
-        } else {
+        }else{
+
           # my.or = NA
           # my.est = NA
           # my.std.err = NA
           # my.dev = my.III.summary$`LR Chisq`[ord.temp]
           # my.df = my.III.summary$Df[ord.temp]
           # my.p.val = my.III.summary$`Pr(>Chisq)`[ord.temp]
-          my.tables.df[this.temp.var,]=c(my.factor[yet.another.var],
+          my.tables.df[this.temp.var,]=c(my.factor[this.shift.temp-1],
                                          NA,
                                          NA,
                                          NA,
-                                         vars.dev[this.shift.temp],
-                                         vars.dev.df[this.shift.temp],
-                                         vars.dev.p[this.shift.temp],
+                                        drop1(new.model,test="Chi")$`LRT`[this.shift.temp],
+                                        drop1(new.model,test="Chi")$`Df`[this.shift.temp],
+                                        drop1(new.model,test="Chi")$`Pr(>Chi)`[this.shift.temp],
                                          rep(NA,v.p.rep))
           #
           # my.tables.df[this.temp.var, ] = c(my.factor[yet.another.var],
@@ -1287,7 +1388,11 @@ quick.reg = function(my.model,
         yet.another.var = yet.another.var + 1
         this.temp.var = this.temp.var + 1
         this.shift.temp = this.shift.temp + 1
+        if(type=="lm"){
         other.other.temp = 2
+        }else{
+          other.other.temp=1
+        }
 
         #### INTERACTION EFFECTS? NOT WORRIED YET ####
         if (length(grepl(":", my.summary$coefficients[other.temp, 1])) >
@@ -1330,14 +1435,14 @@ quick.reg = function(my.model,
               #                                   NA,
               #                                   NA,
               #                                   my.p.val)
-              my.tables.df[this.temp.var, ] = c(my.phia.rownames[other.temp-1],
+              my.tables.df[this.temp.var, ] = c(my.phia.rownames[other.temp],
                                                 vars.or[other.temp],
                                                 vars.or.confint[other.temp,1],
                                                 vars.or.confint[other.temp,2],
-                                                my.phia[other.temp-total.intercepts,3],
-                                                my.phia[other.temp-total.intercepts,4],
-                                                my.phia[other.temp-total.intercepts,6],rep(NA,v.p.rep))
-              this.shift.temp = this.shift.temp + 1
+                                                my.phia[other.temp,3],
+                                                my.phia[other.temp,4],
+                                                my.phia[other.temp,6],rep(NA,v.p.rep))
+              #this.shift.temp = this.shift.temp + 1
               ord.temp=ord.temp + 1
             } else{
               my.or = exp(my.estimate[other.temp + total.intercepts - 1])
@@ -1453,9 +1558,9 @@ quick.reg = function(my.model,
               my.VIF[this.shift.temp - 1, 1]
             )
           }
-        } else if (type == "glm") {
+        } else if (type == "glm2") {
           if (!is.null(my.factor)) {
-            this.shift.temp = this.shift.temp - ord.temp
+            this.shift.temp = this.shift.temp - ord.temp-1
           }
           # my.or = exp(my.estimate[this.shift.temp])
           # my.est = my.estimate[this.shift.temp]
@@ -1490,27 +1595,37 @@ quick.reg = function(my.model,
                                               rep(NA,v.p.len))
           }
           if (!is.null(my.factor)) {
-            this.shift.temp = this.shift.temp + ord.temp
+            this.shift.temp = this.shift.temp + ord.temp+1
           }
            ord.temp = ord.temp + 1
         } else{
           if (!is.null(my.factor)) {
             this.shift.temp = this.shift.temp - ord.temp
-          }
+          }else{
           this.shift.temp=this.shift.temp-total.intercepts
+          }
           my.tables.df[this.temp.var, ] = c(names(vars.or)[this.shift.temp],
                                             vars.or[{this.shift.temp}],
-                                            vars.or.confint[{this.shift.temp},1],
-                                            vars.or.confint[{this.shift.temp},2],
-                                            vars.dev[this.shift.temp],
-                                            vars.dev.df[this.shift.temp],
-                                            vars.dev.p[this.shift.temp],
+                                            if(!is.null(dim(vars.or.confint))){
+                                              vars.or.confint[{this.shift.temp},1]
+                                              }else{
+                                                vars.or.confint[1]
+                                              },
+                                            if(!is.null(dim(vars.or.confint))){
+                                              vars.or.confint[{this.shift.temp},2]
+                                              }else{
+                                                vars.or.confint[2]
+                                              },
+                                            vars.dev[this.shift.temp-ord.temp],
+                                            vars.dev.df[this.shift.temp-ord.temp],
+                                            vars.dev.p[this.shift.temp-ord.temp],
                                             rep(NA,v.p.len))
           if (!is.null(my.factor)) {
-            this.shift.temp = this.shift.temp + ordinal.temp
-          }
+            this.shift.temp = this.shift.temp + ord.temp
+          }else{
           this.shift.temp=this.shift.temp+total.intercepts
-          ord.temp = ord.temp + 1
+          }
+          #ord.temp = ord.temp + 1
         }
         this.shift.temp = this.shift.temp + 1
         this.temp.var = this.temp.var + 1
@@ -1552,8 +1667,8 @@ quick.reg = function(my.model,
     } else{
 
       my.tables.df[this.temp.var,]=c("Total Change",NA,NA,NA,total.dev.change,total.dev.change.df,pchisq(total.dev.change,total.dev.change.df,lower.tail = F),rep(NA,v.p.rep))
-      my.tables.df[this.temp.var+1,]=c("Residuals",NA,NA,NA,resid.dev,resid.df,pchisq(resid.dev,resid.df,lower.tail = F),rep(NA,v.p.rep))
-      my.tables.df[this.temp.var+2,]=c("Total",NA,NA,NA,total.dev,total.df,pchisq(total.dev,total.df,lower.tail = F),rep(NA,v.p.rep))
+      my.tables.df[this.temp.var+1,]=c("Residuals",NA,NA,NA,resid.dev,resid.df-total.dev.change.df,NA,rep(NA,v.p.rep))
+      my.tables.df[this.temp.var+2,]=c("Total",NA,NA,NA,resid.dev+total.dev.change,resid.df,NA,rep(NA,v.p.rep))
 
 
       #my.tables.df[this.temp.var,] = c("Change from Null", NA, NA, NA, ddeviance2, ddf2, fit2)
@@ -1600,30 +1715,33 @@ quick.reg = function(my.model,
         glance_stats = glance_stats[-3, ]
         glance_stats = glance_stats[-5, ]
       } else if (type == "glm") {
-        glance_stats = broom::glance(my.model)
-        glance_stats = tidyr::gather(glance_stats)
+        glance_stats=as.data.frame(matrix(ncol={7+v.p.rep},nrow=1))
+        glance_stats[1,]=c(paste("Family: ",new.model$family$family," <br /> Link: ",new.model$family$link,if(length(my.factor)>0){paste(" <br />Adjustment: ",adjustment,sep="")},sep=""),rep(NA,6),rep(NA,v.p.rep))
 
-
-        glance_stats[[3]] = c("Family: ", "Link: ", rep(NA, 5))
-        glance_stats[[4]] = c(my.model$family$family,
-                              my.model$family$link,
-                              rep(NA, 5))
-        glance_stats[5:{
-          5 + v.p.rep
-        }] = NA
-        glance_stats[6 + v.p.rep] = c(glance_stats$key[3:6], NA, NA, NA)
-        glance_stats[7 + v.p.rep] = c(glance_stats$value[3:6], NA, NA, NA)
-        glance_stats[[1]] = c("Null.dev", "Chi-Sq", "dF", "Pr(>Chisq)", NA, NA, NA)
-        glance_stats[[2]] = c(
-          glance_stats$value[1],
-          ddeviance2,
-          ddf2,
-          pvalString(fit2, digits = 3, format = "default"),
-          NA,
-          NA,
-          NA
-        )
-        glance_stats = glance_stats[-5:-7, ]
+        # glance_stats = broom::glance(my.model)
+        # glance_stats = tidyr::gather(glance_stats)
+        #
+        #
+        # glance_stats[[3]] = c("Family: ", "Link: ", rep(NA, 5))
+        # glance_stats[[4]] = c(my.model$family$family,
+        #                       my.model$family$link,
+        #                       rep(NA, 5))
+        # glance_stats[5:{
+        #   5 + v.p.rep
+        # }] = NA
+        # glance_stats[6 + v.p.rep] = c(glance_stats$key[3:6], NA, NA, NA)
+        # glance_stats[7 + v.p.rep] = c(glance_stats$value[3:6], NA, NA, NA)
+        # glance_stats[[1]] = c("Null.dev", "Chi-Sq", "dF", "Pr(>Chisq)", NA, NA, NA)
+        # glance_stats[[2]] = c(
+        #   glance_stats$value[1],
+        #   ddeviance2,
+        #   ddf2,
+        #   pvalString(fit2, digits = 3, format = "default"),
+        #   NA,
+        #   NA,
+        #   NA
+        # )
+        # glance_stats = glance_stats[-5:-7, ]
         # glance_stats2=as.data.frame(matrix(ncol=7,nrow=1))
         # glance_stats2[1,]=c(glance_stats$key[1],glance_stats$value[1],NA,NA,NA,glance_stats$key[6],glance_stats$value[6])
         # glance_stats2[2,]=c(glance_stats$key[2],glance_stats$value[2],NA,NA,NA,glance_stats$key[7],glance_stats$value[7])
@@ -1781,7 +1899,7 @@ quick.reg = function(my.model,
 
       }
 
-    } else if (type == "glm") {
+    } else if (type == "glm2") {
       my.dust = pixiedust::dust(my.tables.df) %>%
         sprinkle(cols = "p.val", fn = quote(pvalString(
           value, digits = 3, format = "default"
@@ -1987,17 +2105,6 @@ quick.reg = function(my.model,
           sprinkle(cols = 2,
                    halign = "left",
                    part = "foot")
-      } else if (type == "glm") {
-        my.dust = pixiedust::redust(my.dust, glance_stats, part = "foot") %>%
-          sprinkle_na_string(part = "foot") %>%
-          sprinkle_round(cols = c(2, {
-            7 + v.p.rep
-          }),
-          round = 2,
-          part = "foot")
-
-
-        #sprinkle(cols=3:{5+v.p.rep},merge=T,halign="center",part="foot")
       } else{
         my.dust = pixiedust::redust(my.dust, glance_stats, part = "foot") %>%
           sprinkle_na_string(part = "foot") %>%
