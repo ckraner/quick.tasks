@@ -585,7 +585,8 @@ quick.reg = function(my.model,
                      test.stat = "Wilks",
                      my.factor = NULL,
                      do.glance=T,
-                     adjustment = "bonferroni") {
+                     adjustment = "bonferroni",
+                     show.contrasts=T) {
   library(pixiedust)
   library(broom)
   library(car)
@@ -1060,13 +1061,7 @@ quick.reg = function(my.model,
       return()
     }
 
-    #### Make phia stuff ####
-    if(type=="glm" & !is.null(my.factor)){
-    my.phia.reg=quick.contrast(new.model,skip.me=T,adjustment = adjustment,SS.type = SS.type,abbrev.length = abbrev.length,my.factors = my.factor)
-    my.phia.rownames=my.phia.reg$names
-    phia.dev=my.phia.reg$Chisq
 
-    }
     if (!VIF & !part.eta) {
       v.p.len = 7
       v.p.rep = 0
@@ -1183,6 +1178,52 @@ quick.reg = function(my.model,
     }
 
 
+
+    #### Make phia stuff ####
+    if(show.contrasts){
+    if(type=="glm" & !is.null(my.factor)){
+      my.phia.reg=quick.contrast(new.model,skip.me=T,adjustment = adjustment,SS.type = SS.type,abbrev.length = abbrev.length,my.factors = my.factor)
+      my.phia.rownames=my.phia.reg$names
+      phia.dev=my.phia.reg$Chisq
+
+    }else if(type=="lm" & !is.null(my.factor)){
+      my.phia.reg=quick.contrast(my.model,skip.me=T,adjustment = adjustment,SS.type = SS.type,abbrev.length = abbrev.length)
+      my.j=0
+      my.big.phia=NULL
+      phia.shift=0
+      real.shift=0
+      for(i in 1:dim(my.phia.reg)[1]){
+        if(!is.na(my.phia.reg[i,1])){
+          my.j=my.j+1
+          real.shift=real.shift+phia.shift
+          my.big.phia[[my.j]]=my.phia.reg[i,2:7]
+        }else{
+          my.big.phia[[my.j]][i-real.shift,]=my.phia.reg[i,2:7]
+        }
+        phia.shift=phia.shift+1
+      }
+
+      my.phia.rownames=NULL
+      my.phia.SS=NULL
+      my.phia.value=NULL
+      my.phia.F=NULL
+      my.phia.p=NULL
+      my.phia.err=NULL
+      for(i in 1:{my.j}){
+        my.phia.rownames[[i]]=my.big.phia[[i]]$names
+      my.phia.SS[[i]]=my.big.phia[[i]]$`Sum of Sq`
+      my.phia.value[[i]]=my.big.phia[[i]]$Value
+      my.phia.F[[i]]=my.big.phia[[i]][,5]
+      my.phia.p[[i]]=my.big.phia[[i]][,6]
+
+      }
+    }else{
+
+    }
+}
+
+
+
     my.factor.var = 1
     this.temp.var = 1
     this.shift.temp = 1
@@ -1190,6 +1231,7 @@ quick.reg = function(my.model,
     my.shift = 0
     other.temp = 2
     ord.temp = 0
+    phia.temp=1
     if (type == "lm") {
       dang.length = length(rownames(my.III.summary))
     } else if (type == "glm") {
@@ -1241,8 +1283,8 @@ quick.reg = function(my.model,
             my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
             my.tables.df[this.temp.var, ] = c(
               my.rownames[this.shift.temp],
-              my.est,
-              my.std.err,
+              summary(my.model)[[4]][this.shift.temp,1],
+              summary(my.model)[[4]][this.shift.temp,2],
               my.sumsq,
               my.df,
               my.f.val,
@@ -1262,7 +1304,7 @@ quick.reg = function(my.model,
             #}, 4]
 
             my.tables.df[this.temp.var, ] = c(
-              "Intercept",
+              paste(names(attr(my.model$model[[i]],"labels"))[1],"-",names(attr(my.model$model[[i]],"labels"))[2],sep=""),
               my.int.dev.or[i],
               my.int.dev.or.confint[1],
               my.int.dev.or.confint[2],
@@ -1288,7 +1330,9 @@ quick.reg = function(my.model,
             #this.temp.var=this.temp.var+1
 
           }
+
           this.shift.temp = this.shift.temp + 1
+
           this.temp.var = this.temp.var + 1
           i = i + 1
 
@@ -1304,21 +1348,60 @@ quick.reg = function(my.model,
         if (type == "lm") {
           my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp]
           my.df = my.III.summary$Df[this.shift.temp]
-          my.est = NA
-          my.std.err = NA
+          my.est = my.estimate[this.shift.temp]
+          my.std.err = my.std.error[this.shift.temp]
           my.z.val = NA
           my.f.val = my.III.summary$`F value`[this.shift.temp]
           my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
+          if(!VIF & !part.eta){
           my.tables.df[this.temp.var, ] = c(
             my.factor[yet.another.var],
-            my.std.err,
-            my.z.val,
+            NA,
+            NA,
             my.sumsq,
             my.df,
             my.f.val,
             my.p.val,
             rep(NA, v.p.rep)
           )
+          }else if(part.eta & !VIF){
+            my.p.eta = my.sumsq / my.total
+            my.tables.df[this.temp.var, ] = c(
+              my.factor[yet.another.var],
+              NA,
+              NA,
+              my.sumsq,
+              my.df,
+              my.f.val,
+              my.p.val,
+              my.p.eta
+              )
+          }else if(!part.eta & VIF){
+
+            my.tables.df[this.temp.var, ] = c(
+              my.factor[yet.another.var],
+              NA,
+              NA,
+              my.sumsq,
+              my.df,
+              my.f.val,
+              my.p.val,
+              my.VIF[this.shift.temp - 1, 1]
+            )
+          }else{
+            my.p.eta = my.sumsq / my.total
+            my.tables.df[this.temp.var, ] = c(
+              my.factor[yet.another.var],
+              NA,
+              NA,
+              my.sumsq,
+              my.df,
+              my.f.val,
+              my.p.val,
+              my.p.eta,
+              my.VIF[this.shift.temp - 1, 1]
+            )
+          }
         }else{
 
           # my.or = NA
@@ -1372,8 +1455,8 @@ quick.reg = function(my.model,
         }
 
         #### INTERACTION EFFECTS? NOT WORRIED YET ####
-        if (length(grepl(":", my.summary$coefficients[other.temp, 1])) >
-            0) {
+        if ({length(grepl(":", my.summary$coefficients[other.temp, 1])) >
+            0}) {
 
           #### I think the while should not be +1
           if(type=="glm" | type=="ord"){
@@ -1383,6 +1466,7 @@ quick.reg = function(my.model,
             num.of.levels[my.factor.var] + 1
           }) {
             if (type == "lm") {
+              if(show.contrasts){
               my.sumsq = NA
               my.df = NA
               my.est = my.estimate[other.temp]
@@ -1393,15 +1477,17 @@ quick.reg = function(my.model,
               }
               my.p.val = my.summary$coefficients[other.temp, 4]
               my.tables.df[this.temp.var, ] = c(
-                my.rownames[other.temp],
+                my.phia.rownames[[phia.temp]][other.temp-1],
+                my.phia.value[[phia.temp]][other.temp-1],
                 my.est,
-                my.std.err,
-                my.sumsq,
-                my.df,
-                my.f.val,
-                my.p.val,
+                my.phia.SS[[phia.temp]][other.temp-1],
+                1,
+                my.phia.F[[phia.temp]][other.temp-1],
+                my.phia.p[[phia.temp]][other.temp-1],
                 rep(NA, v.p.rep)
               )
+              }
+              ord.temp=ord.temp + 1
             } else if (type == "glm") {
               # my.or = exp(my.estimate[other.temp])
               # my.est = my.estimate[other.temp]
@@ -1417,6 +1503,7 @@ quick.reg = function(my.model,
               #                                   NA,
               #                                   NA,
               #                                   my.p.val)
+              if(show.contrasts){
               my.tables.df[this.temp.var, ] = c(my.phia.rownames[other.temp-1],
                                                 vars.or[other.temp-1],
                                                 vars.or.confint[other.temp-1,1],
@@ -1425,6 +1512,7 @@ quick.reg = function(my.model,
                                                 my.phia[other.temp-1,4],
                                                 my.phia[other.temp-1,6],rep(NA,v.p.rep))
               #this.shift.temp = this.shift.temp + 1
+              }
               ord.temp=ord.temp + 1
             } else{
               my.or = exp(my.estimate[other.temp + total.intercepts - 1])
@@ -1468,7 +1556,8 @@ quick.reg = function(my.model,
             the.length = the.length + 1
 
           }
-
+          phia.temp=phia.temp+1
+          if(!show.contrasts){this.temp.var=this.temp.var-ord.temp}
         } else{
 
         }
@@ -1496,8 +1585,8 @@ quick.reg = function(my.model,
           if (!VIF & !part.eta) {
             my.tables.df[this.temp.var, ] = c(
               rownames(my.III.summary)[this.shift.temp],
-              my.est,
-              my.std.err,
+              summary(my.model)[[4]][this.shift.temp+ord.temp-1,1],
+              summary(my.model)[[4]][this.shift.temp+ord.temp-1,2],
               my.sumsq,
               my.df,
               my.f.val,
@@ -1506,8 +1595,8 @@ quick.reg = function(my.model,
           } else if (!part.eta) {
             my.tables.df[this.temp.var, ] = c(
               rownames(my.III.summary)[this.shift.temp],
-              my.est,
-              my.std.err,
+              summary(my.model)[[4]][this.shift.temp+ord.temp-1,1],
+              summary(my.model)[[4]][this.shift.temp+ord.temp-1,2],
               my.sumsq,
               my.df,
               my.f.val,
@@ -1518,8 +1607,8 @@ quick.reg = function(my.model,
             my.p.eta = my.sumsq / my.total
             my.tables.df[this.temp.var, ] = c(
               rownames(my.III.summary)[this.shift.temp],
-              my.est,
-              my.std.err,
+              summary(my.model)[[4]][this.shift.temp+ord.temp-1,1],
+              summary(my.model)[[4]][this.shift.temp+ord.temp-1,2],
               my.sumsq,
               my.df,
               my.f.val,
@@ -1530,8 +1619,8 @@ quick.reg = function(my.model,
             my.p.eta = my.sumsq / my.total
             my.tables.df[this.temp.var, ] = c(
               rownames(my.III.summary)[this.shift.temp],
-              my.est,
-              my.std.err,
+              summary(my.model)[[4]][this.shift.temp+ord.temp-1,1],
+              summary(my.model)[[4]][this.shift.temp+ord.temp-1,2],
               my.sumsq,
               my.df,
               my.f.val,
@@ -1540,6 +1629,7 @@ quick.reg = function(my.model,
               my.VIF[this.shift.temp - 1, 1]
             )
           }
+          ord.temp=ord.temp+1
         } else if (type == "glm") {
           # if (!is.null(my.factor)) {
           #   this.shift.temp = this.shift.temp - ord.temp-1
@@ -1627,12 +1717,13 @@ quick.reg = function(my.model,
         NA,
         rep(NA, v.p.rep)
       )
-      my.tables.df[this.temp.var + 1, ] = c("Total",
+      my.tables.df[this.temp.var + 1, ] = c("Total Change",
                                             NA,
                                             NA,
                                             my.total,
                                             my.df.total,
                                             rep(NA, v.p.rep + 2))
+      my.tables.df[this.temp.var+2,]=c("Total SS",NA,NA,my.total+my.III.summary$`Sum Sq`[1],my.df.total+1,rep(NA,v.p.rep+2))
       if (!VIF & !part.eta) {
 
       } else if (!VIF) {
@@ -1674,7 +1765,7 @@ quick.reg = function(my.model,
       #### Can eventually make it options
       if (type == "lm") {
         glance_stats=as.data.frame(matrix(ncol={7+v.p.rep},nrow=1))
-        glance_stats[1,]=c(paste("Method: ","QR Decomposition",sep=""),rep(NA,6),rep(NA,v.p.rep))
+        glance_stats[1,]=c(paste("Method: ","QR Decomposition",if(show.contrasts){paste("<br />Adjustment Method: ",adjustment,sep="")},sep=""),rep(NA,6),rep(NA,v.p.rep))
 
         # glance_stats = broom::glance(my.model)
         # glance_stats = tidyr::gather(glance_stats)
@@ -1705,7 +1796,7 @@ quick.reg = function(my.model,
 
       } else if (type == "glm") {
         glance_stats=as.data.frame(matrix(ncol={7+v.p.rep},nrow=1))
-        glance_stats[1,]=c(paste("Family: ",new.model$family$family," <br /> Link: ",new.model$family$link,if(length(my.factor)>0){paste(" <br />Adjustment: ",adjustment,sep="")},sep=""),rep(NA,6),rep(NA,v.p.rep))
+        glance_stats[1,]=c(paste("Family: ",new.model$family$family," <br /> Link: ",new.model$family$link,if(show.contrasts){paste(" <br />Adjustment: ",adjustment,sep="")},sep=""),rep(NA,6),rep(NA,v.p.rep))
 
         # glance_stats = broom::glance(my.model)
         # glance_stats = tidyr::gather(glance_stats)
@@ -1760,7 +1851,7 @@ quick.reg = function(my.model,
 
 
     if (type == "lm") {
-      the.length=the.length+1
+      the.length=the.length+2
       my.dust = pixiedust::dust(my.tables.df) %>%
         sprinkle(cols = "p.val", fn = quote(pvalString(
           value, digits = 3, format = "default"
@@ -1796,7 +1887,7 @@ quick.reg = function(my.model,
         sprinkle(rows=1,cols=1,border="left",part="head")%>%
         sprinkle(rows=1,cols=v.p.len,border="right",part="head")%>%
         sprinkle(
-          rows = this.temp.var,
+          rows = this.temp.var+1,
           cols = 1:v.p.len,
           border = "bottom",
           border_color = "black"
