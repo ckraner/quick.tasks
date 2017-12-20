@@ -594,28 +594,14 @@ quick.reg = function(my.model,
   library(quick.tasks)
 
   #### Find type
-  my.call = as.character(my.model$call)
-  my.split.call = strsplit(my.call, "\\(")
-  my.reg.type2 = my.split.call[[1]][1]
-  if (my.reg.type2 == "lm" | my.reg.type2 == "stats::lm") {
-    my.reg.type = "lm"
-    ab.len=15
-  } else if (my.reg.type2 == "glm" | my.reg.type2 == "stats::glm") {
-    my.reg.type = "glm"
-    ab.len=15
-  } else if (my.reg.type2 == "manova" |
-             my.reg.type2 == "stats::manova") {
-    my.reg.type = "manova"
-    ab.len=15
-  } else if (my.reg.type2 == "clm" |
-             my.reg.type2 == "ordinal::clm") {
-    my.reg.type = "ord"
+  my.reg.type=quick.type(my.model)
+
+  if(type=="ord"){
     ab.len=30
     library(ordinal)
-  } else{
-    stop("Type not supported")
+  }else{
+    ab.len=15
   }
-
   #### Get data frame from parent environment
   my.found.df = eval(parse(text=capture.output(my.model$call$data)),envir = parent.frame())
   #print(dim(my.found.df))
@@ -882,6 +868,8 @@ quick.reg = function(my.model,
       my.rownames = c(abbreviate(rownames(my.summary$coefficients), minlength = abbrev.length),
                       "Residuals",
                       "Total")
+      treat.SS=sum(my.III.summary$`Sum Sq`[2:{length(my.III.summary$`Sum Sq`)-1}])
+      treat.df=sum(my.III.summary$Df[2:{length(my.III.summary$Df)-1}])
     } else if (type == "glm") {
       new.df=my.model$model
       new.model=update(my.model,data=new.df)
@@ -1253,10 +1241,10 @@ quick.reg = function(my.model,
             my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
             my.tables.df[this.temp.var, ] = c(
               my.rownames[this.shift.temp],
-              my.sumsq,
-              my.df,
               my.est,
               my.std.err,
+              my.sumsq,
+              my.df,
               my.f.val,
               my.p.val,
               rep(NA, v.p.rep)
@@ -1308,6 +1296,9 @@ quick.reg = function(my.model,
         if(type=="ord" | type=="glm"){
         my.tables.df[this.temp.var,]=c("Treatment Change",NA,NA,NA,treat.dev,vars.df,pchisq(treat.dev,vars.df,lower.tail = F))
         this.temp.var=this.temp.var+1
+        }else{
+          my.tables.df[this.temp.var,]=c("Treatment",NA,NA,treat.SS,treat.df,glance(my.model)[4],glance(my.model)[5],rep(NA,v.p.rep))
+          this.temp.var=this.temp.var+1
         }
       } else if (this.shift.temp == my.factor.rownames) {
         if (type == "lm") {
@@ -1320,10 +1311,10 @@ quick.reg = function(my.model,
           my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
           my.tables.df[this.temp.var, ] = c(
             my.factor[yet.another.var],
-            my.sumsq,
-            my.df,
             my.std.err,
             my.z.val,
+            my.sumsq,
+            my.df,
             my.f.val,
             my.p.val,
             rep(NA, v.p.rep)
@@ -1403,10 +1394,10 @@ quick.reg = function(my.model,
               my.p.val = my.summary$coefficients[other.temp, 4]
               my.tables.df[this.temp.var, ] = c(
                 my.rownames[other.temp],
-                my.sumsq,
-                my.df,
                 my.est,
                 my.std.err,
+                my.sumsq,
+                my.df,
                 my.f.val,
                 my.p.val,
                 rep(NA, v.p.rep)
@@ -1505,20 +1496,20 @@ quick.reg = function(my.model,
           if (!VIF & !part.eta) {
             my.tables.df[this.temp.var, ] = c(
               rownames(my.III.summary)[this.shift.temp],
-              my.sumsq,
-              my.df,
               my.est,
               my.std.err,
+              my.sumsq,
+              my.df,
               my.f.val,
               my.p.val
             )
           } else if (!part.eta) {
             my.tables.df[this.temp.var, ] = c(
               rownames(my.III.summary)[this.shift.temp],
-              my.sumsq,
-              my.df,
               my.est,
               my.std.err,
+              my.sumsq,
+              my.df,
               my.f.val,
               my.p.val,
               my.VIF[this.shift.temp - 1, 1]
@@ -1527,10 +1518,10 @@ quick.reg = function(my.model,
             my.p.eta = my.sumsq / my.total
             my.tables.df[this.temp.var, ] = c(
               rownames(my.III.summary)[this.shift.temp],
-              my.sumsq,
-              my.df,
               my.est,
               my.std.err,
+              my.sumsq,
+              my.df,
               my.f.val,
               my.p.val,
               my.p.eta
@@ -1539,10 +1530,10 @@ quick.reg = function(my.model,
             my.p.eta = my.sumsq / my.total
             my.tables.df[this.temp.var, ] = c(
               rownames(my.III.summary)[this.shift.temp],
-              my.sumsq,
-              my.df,
               my.est,
               my.std.err,
+              my.sumsq,
+              my.df,
               my.f.val,
               my.p.val,
               my.p.eta,
@@ -1628,18 +1619,20 @@ quick.reg = function(my.model,
     if (type == "lm") {
       my.tables.df[this.temp.var, ] = c(
         "Residuals",
+        NA,
+        NA,
         my.III.summary$`Sum Sq`[this.shift.temp],
         my.III.summary$Df[this.shift.temp],
-        NA,
-        NA,
         NA,
         NA,
         rep(NA, v.p.rep)
       )
       my.tables.df[this.temp.var + 1, ] = c("Total",
+                                            NA,
+                                            NA,
                                             my.total,
                                             my.df.total,
-                                            rep(NA, v.p.rep + 4))
+                                            rep(NA, v.p.rep + 2))
       if (!VIF & !part.eta) {
 
       } else if (!VIF) {
@@ -1680,32 +1673,36 @@ quick.reg = function(my.model,
     if(do.glance){
       #### Can eventually make it options
       if (type == "lm") {
-        glance_stats = broom::glance(my.model)
-        glance_stats = tidyr::gather(glance_stats)
+        glance_stats=as.data.frame(matrix(ncol={7+v.p.rep},nrow=1))
+        glance_stats[1,]=c(paste("Method: ","QR Decomposition",sep=""),rep(NA,6),rep(NA,v.p.rep))
 
+        # glance_stats = broom::glance(my.model)
+        # glance_stats = tidyr::gather(glance_stats)
+        #
+        #
+        # glance_stats[3:{
+        #   5 + v.p.rep
+        # }] = NA
+        # glance_stats[6 + v.p.rep] = c(glance_stats$key[7:8],
+        #                               NA,
+        #                               glance_stats$key[9:11],
+        #                               NA,
+        #                               NA,
+        #                               NA,
+        #                               NA,
+        #                               NA)
+        # glance_stats[7 + v.p.rep] = c(glance_stats$value[7:8],
+        #                               NA,
+        #                               glance_stats$value[9:11],
+        #                               NA,
+        #                               NA,
+        #                               NA,
+        #                               NA,
+        #                               NA)
+        # glance_stats = glance_stats[-7:-11, ]
+        # glance_stats = glance_stats[-3, ]
+        # glance_stats = glance_stats[-5, ]
 
-        glance_stats[3:{
-          5 + v.p.rep
-        }] = NA
-        glance_stats[6 + v.p.rep] = c(glance_stats$key[7:8],
-                                      NA,
-                                      glance_stats$key[9:11],
-                                      NA,
-                                      NA,
-                                      NA,
-                                      NA,
-                                      NA)
-        glance_stats[7 + v.p.rep] = c(glance_stats$value[7:8],
-                                      NA,
-                                      glance_stats$value[9:11],
-                                      NA,
-                                      NA,
-                                      NA,
-                                      NA,
-                                      NA)
-        glance_stats = glance_stats[-7:-11, ]
-        glance_stats = glance_stats[-3, ]
-        glance_stats = glance_stats[-5, ]
       } else if (type == "glm") {
         glance_stats=as.data.frame(matrix(ncol={7+v.p.rep},nrow=1))
         glance_stats[1,]=c(paste("Family: ",new.model$family$family," <br /> Link: ",new.model$family$link,if(length(my.factor)>0){paste(" <br />Adjustment: ",adjustment,sep="")},sep=""),rep(NA,6),rep(NA,v.p.rep))
@@ -1763,6 +1760,7 @@ quick.reg = function(my.model,
 
 
     if (type == "lm") {
+      the.length=the.length+1
       my.dust = pixiedust::dust(my.tables.df) %>%
         sprinkle(cols = "p.val", fn = quote(pvalString(
           value, digits = 3, format = "default"
@@ -1771,7 +1769,7 @@ quick.reg = function(my.model,
         sprinkle_na_string() %>%
         sprinkle(
           rows = 1:the.length,
-          cols = 1:v.p.len,
+          cols = v.p.len,
           border = "right",
           border_color = "black"
         ) %>%
@@ -1782,12 +1780,21 @@ quick.reg = function(my.model,
           border_color = "black"
         ) %>%
         sprinkle(
+          rows=2,
+          cols=1:v.p.len,
+          border=c("top","bottom")
+        )%>%
+        sprinkle(rows=this.temp.var-1,
+                 border="top")%>%
+        sprinkle(
           rows = 1,
           cols = 1:v.p.len,
-          border = c("top", "bottom", "left", "right"),
+          border = c("top", "bottom"),
           border_color = "black",
           part = "head"
         ) %>%
+        sprinkle(rows=1,cols=1,border="left",part="head")%>%
+        sprinkle(rows=1,cols=v.p.len,border="right",part="head")%>%
         sprinkle(
           rows = this.temp.var,
           cols = 1:v.p.len,
@@ -1802,10 +1809,10 @@ quick.reg = function(my.model,
           sprinkle(cols = c(2, 3, 4, 5, 6, 7), pad = 5) %>%
           sprinkle_colnames(
             "Variable",
-            paste("Type ", SS.type, "<br /> Sums of Sq", sep = ""),
-            "df",
             "Estimate",
             "Std. Error",
+            paste("Type ", SS.type, "<br /> Sums of Sq", sep = ""),
+            "df",
             "F-value",
             "Pr(>F)"
           ) %>%
@@ -1825,10 +1832,10 @@ quick.reg = function(my.model,
           sprinkle(cols = c(2, 3, 4, 5, 6, 7, 8), pad = 5) %>%
           sprinkle_colnames(
             "Variable",
-            paste("Type ", SS.type, "<br /> Sums of Sq", sep = ""),
-            "df",
             "Estimate",
             "Std. Error",
+            paste("Type ", SS.type, "<br /> Sums of Sq", sep = ""),
+            "df",
             "F-value",
             "Pr(>F)",
             "Part <br /> eta"
@@ -1849,10 +1856,10 @@ quick.reg = function(my.model,
           sprinkle(cols = c(2, 3, 4, 5, 6, 7, 8), pad = 5) %>%
           sprinkle_colnames(
             "Variable",
-            paste("Type ", SS.type, "<br /> Sums of Sq", sep = ""),
-            "df",
             "Estimate",
             "Std. Error",
+            paste("Type ", SS.type, "<br /> Sums of Sq", sep = ""),
+            "df",
             "F-value",
             "Pr(>F)",
             "VIF"
@@ -1873,10 +1880,10 @@ quick.reg = function(my.model,
           sprinkle(cols = c(2, 3, 4, 5, 6, 7, 8), pad = 5) %>%
           sprinkle_colnames(
             "Variable",
-            paste("Type ", SS.type, "<br /> Sums of Sq", sep = ""),
-            "df",
             "Estimate",
             "Std. Error",
+            paste("Type ", SS.type, "<br /> Sums of Sq", sep = ""),
+            "df",
             "F-value",
             "Pr(>F)",
             "Part <br /> eta",
@@ -2045,58 +2052,61 @@ quick.reg = function(my.model,
     if(do.glance){
       if (type == "lm") {
         my.dust = pixiedust::redust(my.dust, glance_stats, part = "foot") %>%
-          sprinkle(cols = c(2, {
-            7 + v.p.rep
-          }),
-          round = 3,
-          part = "foot") %>%
-          sprinkle(cols = 3:{
-            5 + v.p.rep
-          },
-          replace = c(rep("", {
-            12 + 4 * v.p.rep
-          })),
-          part = "foot") %>%
-          sprinkle(
-            cols = 1,
-            replace = c("R-Square", "Adj R-Sq", "F-Statistic", "P-Value"),
-            part = "foot"
-          ) %>%
-          sprinkle(
-            cols = 2,
-            rows = 4,
-            fn = quote(pvalString(
-              value, digits = 3, format = "default"
-            )),
-            part = "foot"
-          ) %>%
-          sprinkle(
-            cols = 1:v.p.len,
-            rows = 1,
-            halign = "center",
-            part = "head"
-          ) %>%
-          sprinkle_width(cols = 1,
-                         width = 90,
-                         width_units = "pt") %>%
-          sprinkle_width(cols = 2,
-                         width = 108,
-                         width_units = "pt") %>%
-          sprinkle_width(cols = 4,
-                         width = 62,
-                         width_units = "pt") %>%
-          sprinkle_width(cols = 5,
-                         width = 68,
-                         width_units = "pt") %>%
-          sprinkle_width(cols = 6,
-                         width = 68,
-                         width_units = "pt") %>%
-          sprinkle_width(cols = 7,
-                         width = 71,
-                         width_units = "pt") %>%
-          sprinkle(cols = 2,
-                   halign = "left",
-                   part = "foot")
+          sprinkle_na_string(part = "foot") %>%
+          sprinkle(rows=1,merge=T,halign="center",part="foot")
+        # my.dust = pixiedust::redust(my.dust, glance_stats, part = "foot") %>%
+        #   sprinkle(cols = c(2, {
+        #     7 + v.p.rep
+        #   }),
+        #   round = 3,
+        #   part = "foot") %>%
+        #   sprinkle(cols = 3:{
+        #     5 + v.p.rep
+        #   },
+        #   replace = c(rep("", {
+        #     12 + 4 * v.p.rep
+        #   })),
+        #   part = "foot") %>%
+        #   sprinkle(
+        #     cols = 1,
+        #     replace = c("R-Square", "Adj R-Sq", "F-Statistic", "P-Value"),
+        #     part = "foot"
+        #   ) %>%
+        #   sprinkle(
+        #     cols = 2,
+        #     rows = 4,
+        #     fn = quote(pvalString(
+        #       value, digits = 3, format = "default"
+        #     )),
+        #     part = "foot"
+        #   ) %>%
+        #   sprinkle(
+        #     cols = 1:v.p.len,
+        #     rows = 1,
+        #     halign = "center",
+        #     part = "head"
+        #   ) %>%
+        #   sprinkle_width(cols = 1,
+        #                  width = 90,
+        #                  width_units = "pt") %>%
+        #   sprinkle_width(cols = 2,
+        #                  width = 108,
+        #                  width_units = "pt") %>%
+        #   sprinkle_width(cols = 4,
+        #                  width = 62,
+        #                  width_units = "pt") %>%
+        #   sprinkle_width(cols = 5,
+        #                  width = 68,
+        #                  width_units = "pt") %>%
+        #   sprinkle_width(cols = 6,
+        #                  width = 68,
+        #                  width_units = "pt") %>%
+        #   sprinkle_width(cols = 7,
+        #                  width = 71,
+        #                  width_units = "pt") %>%
+        #   sprinkle(cols = 2,
+        #            halign = "left",
+        #            part = "foot")
       } else{
         my.dust = pixiedust::redust(my.dust, glance_stats, part = "foot") %>%
           sprinkle_na_string(part = "foot") %>%

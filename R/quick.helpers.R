@@ -38,3 +38,39 @@ quick.search=function(myDF,partial){
 quick.label=function(variable){
   print(attributes(variable)$label)
 }
+
+#' Get model type
+#'
+#' Helper function to see SPSS label
+#'
+#' @param variable Variable from data set
+#' @return String of label
+#' @keywords Explore
+#' @export
+#' @examples
+#' quick.lavaan(myfit)
+
+quick.type=function(model){
+  my.call = as.character(my.model$call)
+  my.split.call = strsplit(my.call, "\\(")
+  my.reg.type2 = my.split.call[[1]][1]
+  if (my.reg.type2 == "lm" | my.reg.type2 == "stats::lm") {
+    my.reg.type = "lm"
+    #ab.len=15
+  } else if (my.reg.type2 == "glm" | my.reg.type2 == "stats::glm") {
+    my.reg.type = "glm"
+    #ab.len=15
+  } else if (my.reg.type2 == "manova" |
+             my.reg.type2 == "stats::manova") {
+    my.reg.type = "manova"
+    #ab.len=15
+  } else if (my.reg.type2 == "clm" |
+             my.reg.type2 == "ordinal::clm") {
+    my.reg.type = "ord"
+    # ab.len=30
+    # library(ordinal)
+  } else{
+    stop("Type not supported")
+  }
+  return(my.reg.type)
+}
