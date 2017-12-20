@@ -586,7 +586,8 @@ quick.reg = function(my.model,
                      my.factor = NULL,
                      do.glance=T,
                      adjustment = "bonferroni",
-                     show.contrasts=T) {
+                     show.contrasts=F,
+                     show.y.contrasts=T) {
   library(pixiedust)
   library(broom)
   library(car)
@@ -872,6 +873,222 @@ quick.reg = function(my.model,
       treat.SS=sum(my.III.summary$`Sum Sq`[2:{length(my.III.summary$`Sum Sq`)-1}])
       treat.df=sum(my.III.summary$Df[2:{length(my.III.summary$Df)-1}])
     } else if(type == "manova"){
+
+      #### for expansion
+      if (!VIF & !part.eta) {
+        v.p.len = 7
+        v.p.rep = 0
+      } else if (!VIF) {
+        v.p.len = 8
+        v.p.rep = 1
+      } else if (!part.eta) {
+        v.p.len = 8
+        v.p.rep = 1
+      } else{
+        v.p.len = 9
+        v.p.rep = 2
+      }
+      #### Get SSP treatment and error
+      my.SSP.treat=car::Anova(my.model,type=SS.type,test=test.stat)$SSP
+      my.SSP.err=car::Anova(my.model,type=SS.type,test=test.stat)$SSPE
+
+      ### Get total SSP
+      my.SSP.treat.total=my.SSP.treat[[1]]
+      for(i in 2:{length(my.SSP)}){
+        my.SSP.treat.total=my.SSP.treat.total+my.SSP.treat[[i]]
+      }
+      my.SSP.total=my.SSP.treat.total+my.SSP.err
+
+      my.y.levels=dim(my.SSP.total)[1]
+
+      #### Make latent variables (~equivalent to ANOVAs)
+      my.SSP.total.fa.eigen=eigen(my.SSP.total)
+      my.SSP.total.fa.values=1/sqrt(my.SSP.total.fa.eigen$values)
+      for(i in 2:length(my.SSP.total.fa.values)){
+      my.SSP.total.fa.values=rbind(my.SSP.total.fa.values,my.SSP.total.fa.values)
+      }
+      my.SSP.total.fa.values.t=t(my.SSP.total.fa.values)
+      my.SSP.total.fa=my.SSP.total.fa.eigen$vectors*my.SSP.total.fa.values.t
+
+      my.latent.SSP.total=my.SSP.total*my.SSP.total.fa
+
+      my.SSP.treat.fa.eigen=NULL
+      my.SSP.treat.fa.values=NULL
+      my.SSP.treat.fa.values.t=NULL
+      my.SSP.treat.fa=NULL
+      my.latent.SSP.treat=NULL
+      for(i in 1:length(my.SSP.treat)){
+      my.SSP.treat.fa.eigen[[i]]=eigen(my.SSP.treat[[i]])
+      my.SSP.treat.fa.values[[i]]=tryCatch(as.matrix({1/sqrt(my.SSP.treat.fa.eigen[[i]]$values)}),warning=function(w){
+        my.SSP.treat.fa.values[[i]]=matrix(ncol=1,nrow=length(my.SSP.treat.fa.eigen[[i]]$values))
+        for(j in 1:length(my.SSP.treat.fa.eigen[[i]]$values)){
+          my.SSP.treat.fa.values[[i]][j]={1/sqrt(max(my.SSP.treat.fa.eigen[[i]]$values[j],0))}
+          if(my.SSP.treat.fa.values[[i]][j]==Inf){
+            my.SSP.treat.fa.values[[i]][j]=0
+          }
+
+        }
+        return(my.SSP.treat.fa.values[[i]])
+      })
+      for(j in 2:length(my.SSP.treat.fa.values[[i]])){
+        my.SSP.treat.fa.values[[i]]=cbind(my.SSP.treat.fa.values[[i]],my.SSP.treat.fa.values[[i]])
+      }
+      #my.SSP.treat.fa.values.t[[i]]=t(my.SSP.treat.fa.values[[i]])
+      my.SSP.treat.fa[[i]]=my.SSP.treat.fa.eigen[[i]]$vectors*my.SSP.treat.fa.values[[i]]
+
+      my.latent.SSP.treat[[i]]=my.SSP.treat[[i]]*my.SSP.treat.fa[[i]]
+      }
+
+
+      my.SSP.err.fa.eigen=eigen(my.SSP.err)
+      my.SSP.err.fa.values=1/sqrt(my.SSP.err.fa.eigen$values)
+      for(i in 2:length(my.SSP.err.fa.values)){
+        my.SSP.err.fa.values=rbind(my.SSP.err.fa.values,my.SSP.err.fa.values)
+      }
+      my.SSP.err.fa.values.t=t(my.SSP.err.fa.values)
+      my.SSP.err.fa=my.SSP.err.fa.eigen$vectors*my.SSP.err.fa.values.t
+
+      my.latent.SSP.err=my.SSP.err*my.SSP.err.fa
+
+
+
+      #### Get all df
+      my.SSP.total.df=my.y.levels*dim(my.model$model)[1]-1
+      my.SSP.err.df=my.model$df.residual
+      my.SSP.treat.df.total=my.SSP.total.df-my.SSP.err.df
+
+      my.SSP.treat.df=1
+      for(i in 2:length(my.SSP.treat)){
+        manova.grep=grep(paste("^",names(my.SSP.treat)[i],"$",sep=""),names(my.model$xlevels))
+        if(length(manova.grep)>0){
+          my.SSP.treat.df=c(my.SSP.treat.df,{length(my.model$xlevels[[manova.grep]])-1})
+        }else{
+          my.SSP.treat.df=c(my.SSP.treat.df,1)
+        }
+      }
+
+      #### Get treatment change totals
+      my.SSP.treat.change.total=0
+      my.SSP.treat.change=as.data.frame(matrix(ncol=my.y.levels,nrow=my.y.levels))
+      for(i in 2:length(my.SSP.treat)){
+        #my.SSP.treat.change=my.SSP.treat.change+my.SSP.treat[[i]]
+        if(i==2){
+          my.SSP.treat.change=my.SSP.treat[[2]]
+        }else{
+          my.SSP.treat.change=my.SSP.treat.change+my.SSP.treat[[i]]
+        }
+        my.SSP.treat.change.total=my.SSP.treat.change.total+quick.tr(my.SSP.treat[[i]])
+      }
+      my.SSP.treat.change.df=sum(my.SSP.treat.df[-1])*my.y.levels
+
+
+      #### Get residual stuff
+      the.resid.SS=quick.tr(my.SSP.err)
+      the.resid.df=my.model$df.residual
+
+      #### Get total change stuff
+      the.total.change.SS=the.resid.SS+my.SSP.treat.change.total
+      the.total.change.df=the.resid.df+my.SSP.treat.change.df
+
+
+      #### Make basic table ####
+      my.table.names=c("var","test.stat","f.val","SS","df","resid df","p.val")
+
+      my.manova.table=as.data.frame(matrix(ncol=v.p.len,nrow=1))
+      names(my.manova.table)=my.table.names
+      #### add intercept
+      #my.manova.table[1,]=c("Intercept",NA,NA,sum(eigen(my.SSP.treat[[1]])$values),my.y.levels,my.y.levels*my.SSP.err.df,NA)
+
+      my.line.var=1
+      for(i in 1:length(my.SSP.treat)){
+        my.test.stat=NA
+        my.f.val=NA
+        my.SS=quick.tr(my.SSP.treat[[i]])
+        my.df=my.y.levels*my.SSP.treat.df[i]
+        my.p.val=NA
+        my.resid.df=min({my.SSP.err.df*my.SSP.treat.df[i]-my.SSP.treat.df[i]},my.y.levels*my.SSP.err.df)
+        my.manova.table[my.line.var,]=c(names(my.SSP.treat)[i],my.test.stat,my.f.val,my.SS,my.df,my.resid.df,my.p.val)
+        my.line.var=my.line.var+1
+
+        #### Put in treatment
+        if(i==1){
+          my.test.stat=NA
+          my.f.val=NA
+          my.SS=my.SSP.treat.change.total
+          my.df=my.SSP.treat.change.df
+          my.p.val=NA
+          #### Should really be a min statement, but for later...
+          my.resid.df=my.y.levels*my.SSP.err.df
+          my.manova.table[my.line.var,]=c("Treatment",my.test.stat,my.f.val,my.SS,my.df,my.resid.df,my.p.val)
+          my.line.var=my.line.var+1
+          if(show.y.contrasts){
+            for(b in 1:my.y.levels){
+              my.manova.table[my.line.var,]=c(paste(b,"|Treatment",sep=""),NA,NA,my.SSP.treat.change[b,b],{my.df/my.y.levels},{my.resid.df/my.y.levels},NA)
+              my.line.var=my.line.var+1
+            }
+          }
+        }
+        #### Put in latent factors (i.e. ANOVAs)
+        #current.y=1
+        if(show.y.contrasts & i!=1){
+        for(y in 1:my.y.levels){
+          my.name=paste(y,"|",names(my.SSP.treat)[i],sep="")
+          my.test.stat=NA
+          my.f.val=NA
+          my.SS=my.SSP.treat[[i]][y,y]
+          my.df=my.SSP.treat.df[i]
+          my.p.val=NA
+          my.resid.df=my.SSP.err.df
+          my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.f.val,my.SS,my.df,my.resid.df,my.p.val)
+          my.line.var=my.line.var+1
+        }
+        }
+
+        #### Put in contrasts
+        if(show.contrasts & i!=1){
+          #### Check length
+          if(my.SSP.treat.df[i]>1){
+            other.manova.grep=grep(paste("^",names(my.SSP.treat)[i],"$",sep=""),names(my.model$xlevels))
+            my.phia=phia::testInteractions(my.model,pairwise = names(my.model$xlevels)[[other.manova.grep]],adjustment = adjustment)
+
+            for(k in 1:{my.SSP.treat.df[i]}){
+              my.name=rownames(my.phia)[k]
+              my.test.stat=my.phia$`test stat`[k]
+              my.f.val=my.phia$`approx F`[k]
+              my.SS=sum(my.phia[k,1:{dim(my.phia)[2]-6}])
+              my.df=my.phia$`num Df`[k]
+              my.p.val=my.phia$`Pr(>F)`[k]
+              my.resid.df=my.phia$`den Df`[k]
+              my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.f.val,my.SS,my.df,my.resid.df,my.p.val)
+              my.line.var=my.line.var+1
+            }
+          }
+        }
+
+
+      }
+
+      #### Put in residuals, total change, total ss
+      my.manova.table[my.line.var,]=c("Total Residuals",NA,NA,the.resid.SS,the.resid.df,NA,NA)
+      my.line.var=my.line.var+1
+      if(show.y.contrasts){
+        for(i in 1:my.y.levels){
+        my.manova.table[my.line.var,]=c(paste(i,"|Residuals",sep=""),NA,NA,my.SSP.err[i,i],NA,NA,NA)
+        my.line.var=my.line.var+1
+        }
+      }
+      my.manova.table[my.line.var,]=c("Total Change",NA,NA,the.total.change.SS,the.total.change.df,NA,NA)
+      my.line.var=my.line.var+1
+      my.manova.table[my.line.var,]=c("Total SS",NA,NA,quick.tr(my.SSP.total),my.SSP.total.df,NA,NA)
+
+      #### Make eta-sq
+      my.SSP.err.t=t(my.SSP.err)
+
+      eta.sq=NULL
+      for(i in 1:length(my.SSP)){
+      eta.sq[[i]]=my.SSP.err.t*my.SSP[[i]]
+      }
+
       x3 = capture.output(car::Anova(my.model, type = SS.type, test = test.stat))
       my.manova.test = data.frame(matrix(ncol = 7, nrow = 1))
       my.var.temp = 4

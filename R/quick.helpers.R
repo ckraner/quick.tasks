@@ -4,6 +4,26 @@
 ######################## 12/2017 ###########################
 ############################################################
 
+#' Trace of a matrix
+#'
+#' Helper function to quickly get list of column names
+#' based on partial piece.
+#'
+#' @param myDF Dataframe
+#' @param partial partial search as string
+#' @return NULL
+#' @keywords Explore
+#' @examples
+#' quick.search(myDF,"CAS")
+
+quick.tr=function(my.matrix){
+  my.trace=NULL
+  my.trace=my.matrix[1,1]
+  for(i in 2:dim(my.matrix)[1]){
+    my.trace=my.trace+my.matrix[i,i]
+  }
+  return(my.trace)
+}
 
 #' Partial Name Search of Columns
 #'
