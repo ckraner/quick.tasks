@@ -612,7 +612,7 @@ quick.reg = function(my.model,
 
   #### Make factor list
   #### MANOVA ####
-  if (type == "manova" | type == "stats::manova") {
+  if (type == "manova2" | type == "stats::manova2") {
     x3 = capture.output(car::Anova(my.model, type = SS.type, test = test.stat))
     my.manova.test = data.frame(matrix(ncol = 7, nrow = 1))
     my.var.temp = 4
@@ -871,7 +871,34 @@ quick.reg = function(my.model,
                       "Total")
       treat.SS=sum(my.III.summary$`Sum Sq`[2:{length(my.III.summary$`Sum Sq`)-1}])
       treat.df=sum(my.III.summary$Df[2:{length(my.III.summary$Df)-1}])
-    } else if (type == "glm") {
+    } else if(type == "manova"){
+      x3 = capture.output(car::Anova(my.model, type = SS.type, test = test.stat))
+      my.manova.test = data.frame(matrix(ncol = 7, nrow = 1))
+      my.var.temp = 4
+      while (my.var.temp < {
+        length(x3) - 1
+      }) {
+        test = strsplit(x3[my.var.temp], "\\s+")
+
+        if (length(test[[1]]) == 9) {
+          test2 = test[[1]][-9]
+          test2 = test2[-7]
+
+        } else if (length(test[[1]]) == 8) {
+          test2 = test[[1]][-8]
+
+        } else{
+          test2 = test[[1]]
+        }
+
+        my.manova.test[{
+          my.var.temp - 3
+        }, ] = test2
+        my.var.temp = my.var.temp + 1
+
+      }
+      my.summary=summary(my.model)
+    }else if (type == "glm") {
       new.df=my.model$model
       new.model=update(my.model,data=new.df)
       null.model=update(new.model,~1)
