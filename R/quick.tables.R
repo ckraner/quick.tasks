@@ -1011,9 +1011,9 @@ quick.reg = function(my.model,
         my.SSP.total.fa.values=rbind(my.SSP.total.fa.values,my.SSP.total.fa.values)
       }
       my.SSP.total.fa.values.t=t(my.SSP.total.fa.values)
-      my.SSP.total.fa=my.SSP.total.fa.eigen$vectors*my.SSP.total.fa.values.t
+      my.SSP.total.fa=my.SSP.total.fa.eigen$vectors%*%my.SSP.total.fa.values.t
 
-      my.latent.SSP.total=my.SSP.total*my.SSP.total.fa
+      my.latent.SSP.total=my.SSP.total%*%my.SSP.total.fa
 
       my.SSP.treat.fa.eigen=NULL
       my.SSP.treat.fa.values=NULL
@@ -1037,9 +1037,9 @@ quick.reg = function(my.model,
           my.SSP.treat.fa.values[[i]]=cbind(my.SSP.treat.fa.values[[i]],my.SSP.treat.fa.values[[i]])
         }
         #my.SSP.treat.fa.values.t[[i]]=t(my.SSP.treat.fa.values[[i]])
-        my.SSP.treat.fa[[i]]=my.SSP.treat.fa.eigen[[i]]$vectors*my.SSP.treat.fa.values[[i]]
+        my.SSP.treat.fa[[i]]=my.SSP.treat.fa.eigen[[i]]$vectors%*%my.SSP.treat.fa.values[[i]]
 
-        my.latent.SSP.treat[[i]]=my.SSP.treat[[i]]*my.SSP.treat.fa[[i]]
+        my.latent.SSP.treat[[i]]=my.SSP.treat[[i]]%*%my.SSP.treat.fa[[i]]
       }
 
 
@@ -1049,9 +1049,9 @@ quick.reg = function(my.model,
         my.SSP.err.fa.values=rbind(my.SSP.err.fa.values,my.SSP.err.fa.values)
       }
       my.SSP.err.fa.values.t=t(my.SSP.err.fa.values)
-      my.SSP.err.fa=my.SSP.err.fa.eigen$vectors*my.SSP.err.fa.values.t
+      my.SSP.err.fa=my.SSP.err.fa.eigen$vectors%*%my.SSP.err.fa.values.t
 
-      my.latent.SSP.err=my.SSP.err*my.SSP.err.fa
+      my.latent.SSP.err=my.SSP.err%*%my.SSP.err.fa
 
 
 
@@ -1103,7 +1103,7 @@ quick.reg = function(my.model,
       the.total.change.df=the.resid.df+my.SSP.treat.change.df
 
 
-      my.treat.err=solve(my.SSP.err)*my.SSP.treat[[length(my.SSP.treat)]]
+      my.treat.err=solve(my.SSP.err)%*%my.SSP.treat[[length(my.SSP.treat)]]
       quick.m.test(my.treat.err,"Wilks")
 
       #### Make basic table ####
@@ -1116,7 +1116,7 @@ quick.reg = function(my.model,
 
       my.line.var=1
       for(i in 1:length(my.SSP.treat)){
-        my.treat.err=solve(my.SSP.err)*my.SSP.treat[[i]]
+        my.treat.err=solve(my.SSP.err)%*%my.SSP.treat[[i]]
         my.test.stat=quick.m.test(my.treat.err,test.stat)
         my.s=sqrt({my.y.levels*{my.y.levels*my.SSP.treat.df[i]}^2-4}/{my.y.levels^2+{my.y.levels*my.SSP.treat.df[i]}^2-5})
 
@@ -1174,7 +1174,7 @@ quick.reg = function(my.model,
           #### Need to change latents to type II
           if(show.latent){
             for(b in 1:my.y.levels){
-              my.SS=my.latent.SSP.treat.change[b,b]
+              my.SS=sum(weighted.residuals(my.null.model)[,b]^2)-sum(weighted.residuals(my.model)[,b]^2)
               my.df=my.SSP.treat.change.df/my.y.levels
               #### Should really be a min statement, but for later...
               my.resid.df=my.SSP.err.df
