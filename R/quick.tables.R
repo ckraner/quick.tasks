@@ -587,7 +587,8 @@ quick.reg = function(my.model,
                      do.glance=T,
                      adjustment = "bonferroni",
                      show.contrasts=F,
-                     show.y.contrasts=T) {
+                     show.y.contrasts=F,
+                     show.latent=F) {
   library(pixiedust)
   library(broom)
   library(car)
@@ -888,13 +889,115 @@ quick.reg = function(my.model,
         v.p.len = 9
         v.p.rep = 2
       }
+
+      # options(contrasts=c("contr.sum","contr.poly"))
+      # my.new.model=manova(data=Electric3,cbind(HT58,WT58)~FIRSTCHD_F+DAYOFWK)
+
+      for(i in 1:length(my.model$call)){
+        my.formula.grep=grep("cbind",my.model$call[[i]])
+        if(length(my.formula.grep)>0){
+          my.formula=my.model$call[[i]]
+        }
+      }
+      my.vars=strsplit(as.character(my.formula),"~")
+
+
+      my.new.df=my.model$model
+
+
+
+      #### NULL MODEL ####
+      my.null.model=manova(my.new.df[[1]]~1)
+      my.seq.model=my.null.model
+      my.new.df.inc=my.new.df
+      my.new.model=NULL
+      my.new.model[[1]]=my.null.model
+
+      #### Type I & II SS ####
+      j=dim(my.new.df)[2]
+      line=2
+      for(i in 2:{dim(my.new.df)[2]}){
+        j=i
+        my.rh=1
+        k=1
+        while(k <{dim(my.new.df)[2]}){
+          if(j>{dim(my.new.df)[2]}){
+            my.j=abs(j-dim(my.new.df)[2])+1
+          }else{
+            my.j=j
+          }
+          #my.j=k
+          my.rh=paste(my.rh,"+",names(my.new.df)[my.j])
+          my.new.model[[line]]=manova(eval(parse(text=paste("my.new.df[[1]]~",my.rh))),data=my.new.df)
+
+          j=j+1
+          line=line+1
+          k=k+1
+        }
+      }
+      my.SS.type.1=NULL
+      my.SS.type.1.change=NULL
+
+        #### Type I SS
+      #### Also treatment change
+        #1+n
+        my.SS.type.1.dfs=NULL
+        the.var.length=dim(my.new.df)[2]
+        for(i in 1:the.var.length){
+          my.SS.type.1.dfs[[i]]=my.new.model[[i]]
+        }
+
+        ## Null change
+        my.SS.type.1.change[[1]]=summary(my.SS.type.1.dfs[[2]])$SS[[1]]
+        for(i in 2:the.var.length-1){
+          my.SS.type.1.change[[i]]=summary(my.SS.type.1.dfs[[i+1]])$SS[[i]]
+        }
+
+        #### Make treatment
+        my.SS.type.1.change.total=0
+        for(i in 1:length(my.SS.type.1.change)){
+          my.SS.type.1.change.total=my.SS.type.1.change.total+my.SS.type.1.change[[i]]
+        }
+
+        #they are type 2, here is proof.
+      # if(SS.type==2 | SS.type=="II"){
+      #   my.SS.type=NULL
+      #   my.SS.type.change=NULL
+      #   #### Type II SS
+      #   the.var.length=dim(my.new.df)[2]-1
+      #   kappa=the.var.length
+      #   #3n+1
+      #   my.SS.type.change[[1]]=summary(my.new.model[[kappa+1]])$SS[the.var.length]
+      #   for(i in 2:{dim(my.new.df)[2]-1}){
+      #   my.gamma=kappa*i+1
+      #   my.SS.type.change[[i]]=summary(my.new.model[[my.gamma]])$SS[the.var.length]
+      #   }
+
+
+      #### Have incremental model
+      #### Make incremental NULL SS
+      # my.NULL.cumulative.SS=NULL
+      # for(i in 2:dim(my.new.df)[2]){
+      #   my.NULL.cumulative.SS[[i-1]]=anova(my.new.model[[i]],my.new.model[[1]])
+      # }
+
+
+
+
+      #my.dep.var=my.vars[[2]]
+      # my.other.vars=names(new.model$model)
+      # my.var.grep=grep(paste("^",my.dep.var,"$",sep=""),my.other.vars)
+      # my.other.vars=my.other.vars[-my.var.grep]
+      # my.formula=paste("~",my.other.vars[1])
+      # for(i in 2:length(my.other.vars)){
+      #   my.formula=paste(my.formula,"*",my.other.vars[i],sep="")}
       #### Get SSP treatment and error
       my.SSP.treat=car::Anova(my.model,type=SS.type,test=test.stat)$SSP
       my.SSP.err=car::Anova(my.model,type=SS.type,test=test.stat)$SSPE
 
       ### Get total SSP
       my.SSP.treat.total=my.SSP.treat[[1]]
-      for(i in 2:{length(my.SSP)}){
+      for(i in 2:{length(my.SSP.treat)}){
         my.SSP.treat.total=my.SSP.treat.total+my.SSP.treat[[i]]
       }
       my.SSP.total=my.SSP.treat.total+my.SSP.err
@@ -905,7 +1008,7 @@ quick.reg = function(my.model,
       my.SSP.total.fa.eigen=eigen(my.SSP.total)
       my.SSP.total.fa.values=1/sqrt(my.SSP.total.fa.eigen$values)
       for(i in 2:length(my.SSP.total.fa.values)){
-      my.SSP.total.fa.values=rbind(my.SSP.total.fa.values,my.SSP.total.fa.values)
+        my.SSP.total.fa.values=rbind(my.SSP.total.fa.values,my.SSP.total.fa.values)
       }
       my.SSP.total.fa.values.t=t(my.SSP.total.fa.values)
       my.SSP.total.fa=my.SSP.total.fa.eigen$vectors*my.SSP.total.fa.values.t
@@ -918,25 +1021,25 @@ quick.reg = function(my.model,
       my.SSP.treat.fa=NULL
       my.latent.SSP.treat=NULL
       for(i in 1:length(my.SSP.treat)){
-      my.SSP.treat.fa.eigen[[i]]=eigen(my.SSP.treat[[i]])
-      my.SSP.treat.fa.values[[i]]=tryCatch(as.matrix({1/sqrt(my.SSP.treat.fa.eigen[[i]]$values)}),warning=function(w){
-        my.SSP.treat.fa.values[[i]]=matrix(ncol=1,nrow=length(my.SSP.treat.fa.eigen[[i]]$values))
-        for(j in 1:length(my.SSP.treat.fa.eigen[[i]]$values)){
-          my.SSP.treat.fa.values[[i]][j]={1/sqrt(max(my.SSP.treat.fa.eigen[[i]]$values[j],0))}
-          if(my.SSP.treat.fa.values[[i]][j]==Inf){
-            my.SSP.treat.fa.values[[i]][j]=0
+        my.SSP.treat.fa.eigen[[i]]=eigen(my.SSP.treat[[i]])
+        my.SSP.treat.fa.values[[i]]=tryCatch(as.matrix({1/sqrt(my.SSP.treat.fa.eigen[[i]]$values)}),warning=function(w){
+          my.SSP.treat.fa.values[[i]]=matrix(ncol=1,nrow=length(my.SSP.treat.fa.eigen[[i]]$values))
+          for(j in 1:length(my.SSP.treat.fa.eigen[[i]]$values)){
+            my.SSP.treat.fa.values[[i]][j]={1/sqrt(max(my.SSP.treat.fa.eigen[[i]]$values[j],0))}
+            if(my.SSP.treat.fa.values[[i]][j]==Inf){
+              my.SSP.treat.fa.values[[i]][j]=0
+            }
+
           }
-
+          return(my.SSP.treat.fa.values[[i]])
+        })
+        for(j in 2:length(my.SSP.treat.fa.values[[i]])){
+          my.SSP.treat.fa.values[[i]]=cbind(my.SSP.treat.fa.values[[i]],my.SSP.treat.fa.values[[i]])
         }
-        return(my.SSP.treat.fa.values[[i]])
-      })
-      for(j in 2:length(my.SSP.treat.fa.values[[i]])){
-        my.SSP.treat.fa.values[[i]]=cbind(my.SSP.treat.fa.values[[i]],my.SSP.treat.fa.values[[i]])
-      }
-      #my.SSP.treat.fa.values.t[[i]]=t(my.SSP.treat.fa.values[[i]])
-      my.SSP.treat.fa[[i]]=my.SSP.treat.fa.eigen[[i]]$vectors*my.SSP.treat.fa.values[[i]]
+        #my.SSP.treat.fa.values.t[[i]]=t(my.SSP.treat.fa.values[[i]])
+        my.SSP.treat.fa[[i]]=my.SSP.treat.fa.eigen[[i]]$vectors*my.SSP.treat.fa.values[[i]]
 
-      my.latent.SSP.treat[[i]]=my.SSP.treat[[i]]*my.SSP.treat.fa[[i]]
+        my.latent.SSP.treat[[i]]=my.SSP.treat[[i]]*my.SSP.treat.fa[[i]]
       }
 
 
@@ -956,6 +1059,7 @@ quick.reg = function(my.model,
       my.SSP.total.df=my.y.levels*dim(my.model$model)[1]-1
       my.SSP.err.df=my.model$df.residual
       my.SSP.treat.df.total=my.SSP.total.df-my.SSP.err.df
+      #my.latent.SSP.treat.df.total=my.latent.SSP.total.df-my.latent.SSP.err.df
 
       my.SSP.treat.df=1
       for(i in 2:length(my.SSP.treat)){
@@ -970,16 +1074,23 @@ quick.reg = function(my.model,
       #### Get treatment change totals
       my.SSP.treat.change.total=0
       my.SSP.treat.change=as.data.frame(matrix(ncol=my.y.levels,nrow=my.y.levels))
+      my.latent.SSP.treat.change.total=0
+      my.latent.SSP.treat.change=as.data.frame(matrix(ncol=my.y.levels,nrow=my.y.levels))
       for(i in 2:length(my.SSP.treat)){
         #my.SSP.treat.change=my.SSP.treat.change+my.SSP.treat[[i]]
         if(i==2){
           my.SSP.treat.change=my.SSP.treat[[2]]
+          my.latent.SSP.treat.change=my.latent.SSP.treat[[2]]
         }else{
           my.SSP.treat.change=my.SSP.treat.change+my.SSP.treat[[i]]
+          my.latent.SSP.treat.change=my.latent.SSP.treat.change+my.SSP.treat[[i]]
         }
-        my.SSP.treat.change.total=my.SSP.treat.change.total+quick.tr(my.SSP.treat[[i]])
       }
       my.SSP.treat.change.df=sum(my.SSP.treat.df[-1])*my.y.levels
+      my.latent.SSP.treat.change.df=my.SSP.treat.change.df/my.y.levels
+
+      my.SSP.treat.change.total=quick.tr(my.SSP.treat.change)
+      my.latent.SSP.treat.change.total=quick.tr(my.latent.SSP.treat.change)
 
 
       #### Get residual stuff
@@ -987,9 +1098,13 @@ quick.reg = function(my.model,
       the.resid.df=my.model$df.residual
 
       #### Get total change stuff
-      the.total.change.SS=the.resid.SS+my.SSP.treat.change.total
+      my.total.change=my.SSP.err+my.SSP.treat.change
+      the.total.change.SS=the.resid.SS+sum(diag(my.SS.type.1.change.total))
       the.total.change.df=the.resid.df+my.SSP.treat.change.df
 
+
+      my.treat.err=solve(my.SSP.err)*my.SSP.treat[[length(my.SSP.treat)]]
+      quick.m.test(my.treat.err,"Wilks")
 
       #### Make basic table ####
       my.table.names=c("var","test.stat","f.val","SS","df","resid df","p.val")
@@ -1001,47 +1116,94 @@ quick.reg = function(my.model,
 
       my.line.var=1
       for(i in 1:length(my.SSP.treat)){
-        my.test.stat=NA
-        my.f.val=NA
+        my.treat.err=solve(my.SSP.err)*my.SSP.treat[[i]]
+        my.test.stat=quick.m.test(my.treat.err,test.stat)
+        my.s=sqrt({my.y.levels*{my.y.levels*my.SSP.treat.df[i]}^2-4}/{my.y.levels^2+{my.y.levels*my.SSP.treat.df[i]}^2-5})
+
+        my.m=my.SSP.err.df+my.y.levels*my.SSP.treat.df[i]-.5*{my.y.levels+my.y.levels*my.SSP.treat.df[i]+1}
+
+        my.R.val.part={1-my.test.stat^{1/my.s}}/{my.test.stat^{1/my.s}}
+
+        my.R.val.part2={my.m*my.s-{my.y.levels*my.y.levels*my.SSP.treat.df[i]}/3}/{my.y.levels*my.y.levels*my.SSP.treat.df[i]}
+
+        my.R.val=my.R.val.part*my.R.val.part2
+
         my.SS=quick.tr(my.SSP.treat[[i]])
         my.df=my.y.levels*my.SSP.treat.df[i]
-        my.p.val=NA
         my.resid.df=min({my.SSP.err.df*my.SSP.treat.df[i]-my.SSP.treat.df[i]},my.y.levels*my.SSP.err.df)
+        my.f.val={my.SS/my.df}/{the.resid.SS/my.resid.df}
+        my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
+
         my.manova.table[my.line.var,]=c(names(my.SSP.treat)[i],my.test.stat,my.f.val,my.SS,my.df,my.resid.df,my.p.val)
         my.line.var=my.line.var+1
 
         #### Put in treatment
+        #### From Type I statistics
         if(i==1){
           my.test.stat=NA
-          my.f.val=NA
-          my.SS=my.SSP.treat.change.total
+
+          my.SS=sum(diag(my.SS.type.1.change.total))
           my.df=my.SSP.treat.change.df
-          my.p.val=NA
           #### Should really be a min statement, but for later...
           my.resid.df=my.y.levels*my.SSP.err.df
+
+          my.f.val={my.SS/my.df}/{sum(diag(my.SSP.err))/my.resid.df}
+          my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
+
           my.manova.table[my.line.var,]=c("Treatment",my.test.stat,my.f.val,my.SS,my.df,my.resid.df,my.p.val)
           my.line.var=my.line.var+1
+
+          #### Y Contrasts
           if(show.y.contrasts){
             for(b in 1:my.y.levels){
-              my.manova.table[my.line.var,]=c(paste(b,"|Treatment",sep=""),NA,NA,my.SSP.treat.change[b,b],{my.df/my.y.levels},{my.resid.df/my.y.levels},NA)
+              my.test.stat=NA
+
+              my.SS=my.SS.type.1.change.total[b,b]
+              my.df=my.SSP.treat.change.df
+              #### Should really be a min statement, but for later...
+              my.resid.df=my.y.levels*my.SSP.err.df
+
+              my.f.val={my.SS/my.df}/{sum(diag(my.SSP.err))/my.resid.df}
+              my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
+              my.manova.table[my.line.var,]=c(paste(b,"|Treatment",sep=""),my.test.stat,my.f.val,my.SS,{my.df/my.y.levels},{my.resid.df/my.y.levels},my.p.val)
+              my.line.var=my.line.var+1
+            }
+          }
+
+          #### Show latent treatments (ANOVAs)
+          #### Need to change latents to type II
+          if(show.latent){
+            for(b in 1:my.y.levels){
+              my.SS=my.latent.SSP.treat.change[b,b]
+              my.df=my.SSP.treat.change.df/my.y.levels
+              #### Should really be a min statement, but for later...
+              my.resid.df=my.SSP.err.df
+              my.f.val={my.SS/my.df}/{my.latent.SSP.err[y,y]/my.resid.df}
+              my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
+              my.manova.table[my.line.var,]=c(paste(b,"|Treatment",sep=""),NA,my.f.val,my.SS,my.df,{my.resid.df},my.p.val)
               my.line.var=my.line.var+1
             }
           }
         }
-        #### Put in latent factors (i.e. ANOVAs)
+
+
+        #### Put in decomposed factors (y constrasts)
         #current.y=1
         if(show.y.contrasts & i!=1){
-        for(y in 1:my.y.levels){
-          my.name=paste(y,"|",names(my.SSP.treat)[i],sep="")
-          my.test.stat=NA
-          my.f.val=NA
-          my.SS=my.SSP.treat[[i]][y,y]
-          my.df=my.SSP.treat.df[i]
-          my.p.val=NA
-          my.resid.df=my.SSP.err.df
-          my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.f.val,my.SS,my.df,my.resid.df,my.p.val)
-          my.line.var=my.line.var+1
-        }
+          for(y in 1:my.y.levels){
+            my.name=paste(y,"|",names(my.SSP.treat)[i],sep="")
+            my.test.stat=NA
+
+            my.SS=my.SSP.treat[[i]][y,y]
+            my.df=my.SSP.treat.df[i]
+            my.resid.df=my.SSP.err.df
+
+            my.f.val={my.SS/my.df}/{sum(diag(my.SSP.err))/my.resid.df}
+            my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
+
+            my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.f.val,my.SS,my.df,my.resid.df,my.p.val)
+            my.line.var=my.line.var+1
+          }
         }
 
         #### Put in contrasts
@@ -1066,6 +1228,24 @@ quick.reg = function(my.model,
         }
 
 
+        #### Put in latents (ANOVA)
+
+        if(show.latent &i!=1){
+          for(y in 1:my.y.levels){
+            my.name=paste(y,"|",names(my.SSP.treat)[i],sep="")
+            my.test.stat=NA
+            my.resid.df=my.SSP.err.df
+            my.SS=my.latent.SSP.treat[[i]][y,y]
+            my.df=my.SSP.treat.df[i]
+            my.f.val={my.SS/my.df}/{my.latent.SSP.err[y,y]/my.resid.df}
+            my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
+
+            my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.f.val,my.SS,my.df,my.resid.df,my.p.val)
+            my.line.var=my.line.var+1
+          }
+        }
+
+
       }
 
       #### Put in residuals, total change, total ss
@@ -1073,48 +1253,109 @@ quick.reg = function(my.model,
       my.line.var=my.line.var+1
       if(show.y.contrasts){
         for(i in 1:my.y.levels){
-        my.manova.table[my.line.var,]=c(paste(i,"|Residuals",sep=""),NA,NA,my.SSP.err[i,i],NA,NA,NA)
-        my.line.var=my.line.var+1
+          my.manova.table[my.line.var,]=c(paste(i,"|Residuals",sep=""),NA,NA,my.SSP.err[i,i],NA,NA,NA)
+          my.line.var=my.line.var+1
+        }
+      }
+      if(show.latent){
+        for(i in 1:my.y.levels){
+          my.manova.table[my.line.var,]=c(paste(i,"|Residuals",sep=""),NA,NA,my.latent.SSP.err[i,i],NA,NA,NA)
+          my.line.var=my.line.var+1
         }
       }
       my.manova.table[my.line.var,]=c("Total Change",NA,NA,the.total.change.SS,the.total.change.df,NA,NA)
       my.line.var=my.line.var+1
       my.manova.table[my.line.var,]=c("Total SS",NA,NA,quick.tr(my.SSP.total),my.SSP.total.df,NA,NA)
 
-      #### Make eta-sq
-      my.SSP.err.t=t(my.SSP.err)
 
-      eta.sq=NULL
-      for(i in 1:length(my.SSP)){
-      eta.sq[[i]]=my.SSP.err.t*my.SSP[[i]]
+      for(i in 2:dim(my.manova.table)[2]){
+        my.manova.table[[i]]=as.numeric(my.manova.table[[i]])
+      }
+      tmp.change=0
+      if(show.latent & show.y.contrasts){
+        tmp.change=4
+      }else if(show.latent & !show.y.contrasts){
+        tmp.change=2
+      }else if(!show.latent & show.y.contrasts){
+        tmp.change=2
+      }
+      #my.line.var
+
+      #### Make Dusted table ####
+      options(pixie_interactive = pix.int,
+              pixie_na_string = "")
+      my.dust=pixiedust::dust(my.manova.table)%>%
+        sprinkle_na_string()%>%
+        sprinkle_print_method(pix.method)%>%
+        sprinkle_border(cols=1,border="left")%>%
+        sprinkle_border(cols={7+v.p.rep},border="right")%>%
+        sprinkle_border(rows=my.line.var,boder="bottom")%>%
+        sprinkle_border(rows=my.line.var-{2+tmp.change},border="top")%>%
+        sprinkle_border(cols=1,border="left",part="head")%>%
+        sprinkle_border(cols={7+v.p.rep},border="right",part="head")%>%
+        sprinkle_border(rows=1,border=c("top","bottom"),part="head")%>%
+        sprinkle_border(rows={1+ifelse(show.y.contrasts | show.latent,my.y.levels+1,1)},border="bottom")%>%
+        sprinkle_round(cols=2:6,round=3)%>%
+        sprinkle_colnames("Variable",paste(test.stat, "<br /> Test Statistic",sep=""),
+                          "F-Value",paste("Type ",2,"<br /> Sums of Sq",sep=""),
+                          "dF","Resid <br /> dF","P-value")%>%
+        sprinkle_align(rows=1,halign="center",part="head")%>%
+        sprinkle_pad(rows=1:{7+v.p.rep},pad=5)%>%
+        sprinkle(cols = "p.val", fn = quote(pvalString(
+          value, digits = 3, format = "default"
+        )))%>%
+        sprinkle_border(rows=2,border=c("top","bottom"))
+
+      ##### Make glance stats
+      my_glance_stats=as.data.frame(matrix(ncol=v.p.len,nrow=1))
+      my_glance_stats[1,]=c(paste("Method: QR decomposition",if(show.contrasts){paste(" <br />Adjustment: ", adjustment,sep="")},if(show.latent){paste(" <br /> Latent Contrasts")}),rep(NA,{6+v.p.rep}))
+
+
+      my.dust=pixiedust::redust(my.dust,my_glance_stats,part="foot")%>%
+        sprinkle(merge=T,halign="center",part="foot")
+
+      if (pix.int) {
+        return(my.dust)
+      } else{
+        my.dust.print = print(my.dust, quote = F)[1]
+        return(my.dust.print)
       }
 
-      x3 = capture.output(car::Anova(my.model, type = SS.type, test = test.stat))
-      my.manova.test = data.frame(matrix(ncol = 7, nrow = 1))
-      my.var.temp = 4
-      while (my.var.temp < {
-        length(x3) - 1
-      }) {
-        test = strsplit(x3[my.var.temp], "\\s+")
 
-        if (length(test[[1]]) == 9) {
-          test2 = test[[1]][-9]
-          test2 = test2[-7]
-
-        } else if (length(test[[1]]) == 8) {
-          test2 = test[[1]][-8]
-
-        } else{
-          test2 = test[[1]]
-        }
-
-        my.manova.test[{
-          my.var.temp - 3
-        }, ] = test2
-        my.var.temp = my.var.temp + 1
-
-      }
-      my.summary=summary(my.model)
+      # #### Make eta-sq
+      # my.SSP.err.t=t(my.SSP.err)
+      #
+      # eta.sq=NULL
+      # for(i in 1:length(my.SSP)){
+      #   eta.sq[[i]]=my.SSP.err.t*my.SSP[[i]]
+      # }
+#
+#       x3 = capture.output(car::Anova(my.model, type = SS.type, test = test.stat))
+#       my.manova.test = data.frame(matrix(ncol = 7, nrow = 1))
+#       my.var.temp = 4
+#       while (my.var.temp < {
+#         length(x3) - 1
+#       }) {
+#         test = strsplit(x3[my.var.temp], "\\s+")
+#
+#         if (length(test[[1]]) == 9) {
+#           test2 = test[[1]][-9]
+#           test2 = test2[-7]
+#
+#         } else if (length(test[[1]]) == 8) {
+#           test2 = test[[1]][-8]
+#
+#         } else{
+#           test2 = test[[1]]
+#         }
+#
+#         my.manova.test[{
+#           my.var.temp - 3
+#         }, ] = test2
+#         my.var.temp = my.var.temp + 1
+#
+#       }
+#       my.summary=summary(my.model)
     }else if (type == "glm") {
       new.df=my.model$model
       new.model=update(my.model,data=new.df)
@@ -1215,21 +1456,21 @@ quick.reg = function(my.model,
       if(length(grep("*",new.model$formula))>0){
         my.full.model=new.model
       }else{
-      my.vars=strsplit(as.character(new.model$formula),"~")
-      my.dep.var=my.vars[[2]]
-      my.other.vars=names(new.model$model)
-      if(length(my.other.vars)>1){
-      my.var.grep=grep(paste("^",my.dep.var,"$",sep=""),my.other.vars)
-      my.other.vars=my.other.vars[-my.var.grep]
-      my.formula=paste("~",my.other.vars[1])
-      for(i in 2:length(my.other.vars)){
-        my.formula=paste(my.formula,"*",my.other.vars[i],sep="")}
+        my.vars=strsplit(as.character(new.model$formula),"~")
+        my.dep.var=my.vars[[2]]
+        my.other.vars=names(new.model$model)
+        if(length(my.other.vars)>1){
+          my.var.grep=grep(paste("^",my.dep.var,"$",sep=""),my.other.vars)
+          my.other.vars=my.other.vars[-my.var.grep]
+          my.formula=paste("~",my.other.vars[1])
+          for(i in 2:length(my.other.vars)){
+            my.formula=paste(my.formula,"*",my.other.vars[i],sep="")}
 
-      #### FULL MODEL THING ####
-      my.full.model=update(new.model,my.formula)
-      }else{
-        my.full.model=new.model
-      }
+          #### FULL MODEL THING ####
+          my.full.model=update(new.model,my.formula)
+        }else{
+          my.full.model=new.model
+        }
       }
 
       my.full.model.z=summary(my.full.model)$coefficients[1:total.intercepts,3]^2
@@ -1277,7 +1518,7 @@ quick.reg = function(my.model,
       #total.dev=-2*{as.integer(levels(null.model$info$logLik)[1])-as.integer(levels(new.model$info$logLik)[1])}
       total.dev.change=treat.dev+my.int.dev.total
       if(total.intercepts>1){
-      total.dev.change.df=total.intercepts*vars.df.total
+        total.dev.change.df=total.intercepts*vars.df.total
       }else{
         total.dev.change.df=vars.df.total+total.intercepts
       }
@@ -1425,46 +1666,46 @@ quick.reg = function(my.model,
 
     #### Make phia stuff ####
     if(show.contrasts){
-    if(type=="glm" & !is.null(my.factor)){
-      my.phia.reg=quick.contrast(new.model,skip.me=T,adjustment = adjustment,SS.type = SS.type,abbrev.length = abbrev.length,my.factors = my.factor)
-      my.phia.rownames=my.phia.reg$names
-      phia.dev=my.phia.reg$Chisq
+      if(type=="glm" & !is.null(my.factor)){
+        my.phia.reg=quick.contrast(new.model,skip.me=T,adjustment = adjustment,SS.type = SS.type,abbrev.length = abbrev.length,my.factors = my.factor)
+        my.phia.rownames=my.phia.reg$names
+        phia.dev=my.phia.reg$Chisq
 
-    }else if(type=="lm" & !is.null(my.factor)){
-      my.phia.reg=quick.contrast(my.model,skip.me=T,adjustment = adjustment,SS.type = SS.type,abbrev.length = abbrev.length)
-      my.j=0
-      my.big.phia=NULL
-      phia.shift=0
-      real.shift=0
-      for(i in 1:dim(my.phia.reg)[1]){
-        if(!is.na(my.phia.reg[i,1])){
-          my.j=my.j+1
-          real.shift=real.shift+phia.shift
-          my.big.phia[[my.j]]=my.phia.reg[i,2:7]
-        }else{
-          my.big.phia[[my.j]][i-real.shift,]=my.phia.reg[i,2:7]
+      }else if(type=="lm" & !is.null(my.factor)){
+        my.phia.reg=quick.contrast(my.model,skip.me=T,adjustment = adjustment,SS.type = SS.type,abbrev.length = abbrev.length)
+        my.j=0
+        my.big.phia=NULL
+        phia.shift=0
+        real.shift=0
+        for(i in 1:dim(my.phia.reg)[1]){
+          if(!is.na(my.phia.reg[i,1])){
+            my.j=my.j+1
+            real.shift=real.shift+phia.shift
+            my.big.phia[[my.j]]=my.phia.reg[i,2:7]
+          }else{
+            my.big.phia[[my.j]][i-real.shift,]=my.phia.reg[i,2:7]
+          }
+          phia.shift=phia.shift+1
         }
-        phia.shift=phia.shift+1
+
+        my.phia.rownames=NULL
+        my.phia.SS=NULL
+        my.phia.value=NULL
+        my.phia.F=NULL
+        my.phia.p=NULL
+        my.phia.err=NULL
+        for(i in 1:{my.j}){
+          my.phia.rownames[[i]]=my.big.phia[[i]]$names
+          my.phia.SS[[i]]=my.big.phia[[i]]$`Sum of Sq`
+          my.phia.value[[i]]=my.big.phia[[i]]$Value
+          my.phia.F[[i]]=my.big.phia[[i]][,5]
+          my.phia.p[[i]]=my.big.phia[[i]][,6]
+
+        }
+      }else{
+
       }
-
-      my.phia.rownames=NULL
-      my.phia.SS=NULL
-      my.phia.value=NULL
-      my.phia.F=NULL
-      my.phia.p=NULL
-      my.phia.err=NULL
-      for(i in 1:{my.j}){
-        my.phia.rownames[[i]]=my.big.phia[[i]]$names
-      my.phia.SS[[i]]=my.big.phia[[i]]$`Sum of Sq`
-      my.phia.value[[i]]=my.big.phia[[i]]$Value
-      my.phia.F[[i]]=my.big.phia[[i]][,5]
-      my.phia.p[[i]]=my.big.phia[[i]][,6]
-
-      }
-    }else{
-
     }
-}
 
 
 
@@ -1558,7 +1799,7 @@ quick.reg = function(my.model,
               rep(NA, v.p.rep))
 
             #this.temp.var=this.temp.var+1
-              #my.tables.df[this.temp.var,]=c("Treatment",NA,NA,NA,total.dev,total.df,dchisq(total.dev,total.df),rep(NA,v.p.rep))
+            #my.tables.df[this.temp.var,]=c("Treatment",NA,NA,NA,total.dev,total.df,dchisq(total.dev,total.df),rep(NA,v.p.rep))
 
           }else{
             my.tables.df[this.temp.var, ] = c(
@@ -1582,8 +1823,8 @@ quick.reg = function(my.model,
 
         }
         if(type=="ord" | type=="glm"){
-        my.tables.df[this.temp.var,]=c("Treatment Change",NA,NA,NA,treat.dev,vars.df,pchisq(treat.dev,vars.df,lower.tail = F))
-        this.temp.var=this.temp.var+1
+          my.tables.df[this.temp.var,]=c("Treatment Change",NA,NA,NA,treat.dev,vars.df,pchisq(treat.dev,vars.df,lower.tail = F))
+          this.temp.var=this.temp.var+1
         }else{
           my.tables.df[this.temp.var,]=c("Treatment",NA,NA,treat.SS,treat.df,glance(my.model)[4],glance(my.model)[5],rep(NA,v.p.rep))
           this.temp.var=this.temp.var+1
@@ -1598,16 +1839,16 @@ quick.reg = function(my.model,
           my.f.val = my.III.summary$`F value`[this.shift.temp]
           my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
           if(!VIF & !part.eta){
-          my.tables.df[this.temp.var, ] = c(
-            my.factor[yet.another.var],
-            NA,
-            NA,
-            my.sumsq,
-            my.df,
-            my.f.val,
-            my.p.val,
-            rep(NA, v.p.rep)
-          )
+            my.tables.df[this.temp.var, ] = c(
+              my.factor[yet.another.var],
+              NA,
+              NA,
+              my.sumsq,
+              my.df,
+              my.f.val,
+              my.p.val,
+              rep(NA, v.p.rep)
+            )
           }else if(part.eta & !VIF){
             my.p.eta = my.sumsq / my.total
             my.tables.df[this.temp.var, ] = c(
@@ -1619,7 +1860,7 @@ quick.reg = function(my.model,
               my.f.val,
               my.p.val,
               my.p.eta
-              )
+            )
           }else if(!part.eta & VIF){
 
             my.tables.df[this.temp.var, ] = c(
@@ -1658,9 +1899,9 @@ quick.reg = function(my.model,
                                          NA,
                                          NA,
                                          NA,
-                                        drop1(new.model,test="Chi")$`LRT`[this.shift.temp],
-                                        drop1(new.model,test="Chi")$`Df`[this.shift.temp],
-                                        drop1(new.model,test="Chi")$`Pr(>Chi)`[this.shift.temp],
+                                         drop1(new.model,test="Chi")$`LRT`[this.shift.temp],
+                                         drop1(new.model,test="Chi")$`Df`[this.shift.temp],
+                                         drop1(new.model,test="Chi")$`Pr(>Chi)`[this.shift.temp],
                                          rep(NA,v.p.rep))
           #
           # my.tables.df[this.temp.var, ] = c(my.factor[yet.another.var],
@@ -1670,7 +1911,7 @@ quick.reg = function(my.model,
           #                                   my.dev,
           #                                   my.df,
           #                                   my.p.val)
-           #ord.temp = ord.temp + 1
+          #ord.temp = ord.temp + 1
         }
         # else{
         #   my.or = NA
@@ -1693,7 +1934,7 @@ quick.reg = function(my.model,
         this.temp.var = this.temp.var + 1
         this.shift.temp = this.shift.temp + 1
         if(type=="lm"){
-        other.other.temp = 2
+          other.other.temp = 2
         }else{
           other.other.temp=1
         }
@@ -1711,25 +1952,25 @@ quick.reg = function(my.model,
           }) {
             if (type == "lm") {
               if(show.contrasts){
-              my.sumsq = NA
-              my.df = NA
-              my.est = my.estimate[other.temp]
-              my.std.err = my.std.error[other.temp]
-              #### NEED TO FIX ####
-              my.f.val = {
-                my.summary$coefficients[other.temp, 3] ^ 2
-              }
-              my.p.val = my.summary$coefficients[other.temp, 4]
-              my.tables.df[this.temp.var, ] = c(
-                my.phia.rownames[[phia.temp]][other.temp-1],
-                my.phia.value[[phia.temp]][other.temp-1],
-                my.est,
-                my.phia.SS[[phia.temp]][other.temp-1],
-                1,
-                my.phia.F[[phia.temp]][other.temp-1],
-                my.phia.p[[phia.temp]][other.temp-1],
-                rep(NA, v.p.rep)
-              )
+                my.sumsq = NA
+                my.df = NA
+                my.est = my.estimate[other.temp]
+                my.std.err = my.std.error[other.temp]
+                #### NEED TO FIX ####
+                my.f.val = {
+                  my.summary$coefficients[other.temp, 3] ^ 2
+                }
+                my.p.val = my.summary$coefficients[other.temp, 4]
+                my.tables.df[this.temp.var, ] = c(
+                  my.phia.rownames[[phia.temp]][other.temp-1],
+                  my.phia.value[[phia.temp]][other.temp-1],
+                  my.est,
+                  my.phia.SS[[phia.temp]][other.temp-1],
+                  1,
+                  my.phia.F[[phia.temp]][other.temp-1],
+                  my.phia.p[[phia.temp]][other.temp-1],
+                  rep(NA, v.p.rep)
+                )
               }
               ord.temp=ord.temp + 1
             } else if (type == "glm") {
@@ -1748,14 +1989,14 @@ quick.reg = function(my.model,
               #                                   NA,
               #                                   my.p.val)
               if(show.contrasts){
-              my.tables.df[this.temp.var, ] = c(my.phia.rownames[other.temp-1],
-                                                vars.or[other.temp-1],
-                                                vars.or.confint[other.temp-1,1],
-                                                vars.or.confint[other.temp-1,2],
-                                                my.phia[other.temp-1,3],
-                                                my.phia[other.temp-1,4],
-                                                my.phia[other.temp-1,6],rep(NA,v.p.rep))
-              #this.shift.temp = this.shift.temp + 1
+                my.tables.df[this.temp.var, ] = c(my.phia.rownames[other.temp-1],
+                                                  vars.or[other.temp-1],
+                                                  vars.or.confint[other.temp-1,1],
+                                                  vars.or.confint[other.temp-1,2],
+                                                  my.phia[other.temp-1,3],
+                                                  my.phia[other.temp-1,4],
+                                                  my.phia[other.temp-1,6],rep(NA,v.p.rep))
+                #this.shift.temp = this.shift.temp + 1
               }
               ord.temp=ord.temp + 1
             } else{
@@ -1914,25 +2155,25 @@ quick.reg = function(my.model,
           #   this.shift.temp = this.shift.temp + ord.temp+1
           # }
           yet.another.var=yet.another.var+1
-           ord.temp = ord.temp + 1
+          ord.temp = ord.temp + 1
         } else{
           if (!is.null(my.factor)) {
             this.shift.temp = this.shift.temp - ord.temp
           }else{
-          this.shift.temp=this.shift.temp-total.intercepts
+            this.shift.temp=this.shift.temp-total.intercepts
           }
           my.tables.df[this.temp.var, ] = c(names(vars.or)[this.shift.temp],
                                             vars.or[{this.shift.temp}],
                                             if(!is.null(dim(vars.or.confint))){
                                               vars.or.confint[{this.shift.temp},1]
-                                              }else{
-                                                vars.or.confint[1]
-                                              },
+                                            }else{
+                                              vars.or.confint[1]
+                                            },
                                             if(!is.null(dim(vars.or.confint))){
                                               vars.or.confint[{this.shift.temp},2]
-                                              }else{
-                                                vars.or.confint[2]
-                                              },
+                                            }else{
+                                              vars.or.confint[2]
+                                            },
                                             vars.dev[this.shift.temp-ord.temp],
                                             vars.dev.df[this.shift.temp-ord.temp],
                                             vars.dev.p[this.shift.temp-ord.temp],
@@ -1940,7 +2181,7 @@ quick.reg = function(my.model,
           if (!is.null(my.factor)) {
             this.shift.temp = this.shift.temp + ord.temp
           }else{
-          this.shift.temp=this.shift.temp+total.intercepts
+            this.shift.temp=this.shift.temp+total.intercepts
           }
           #ord.temp = ord.temp + 1
         }

@@ -25,6 +25,46 @@ quick.tr=function(my.matrix){
   return(my.trace)
 }
 
+#' Test statistics
+#'
+#' Helper function to quickly get list of column names
+#' based on partial piece.
+#'
+#' @param myDF Dataframe
+#' @param partial partial search as string
+#' @return NULL
+#' @keywords Explore
+#' @examples
+#' quick.search(myDF,"CAS")
+
+quick.m.test=function(my.matrix,test.stat){
+
+  if(test.stat=="Wilks"){
+  my.eigen=eigen(my.matrix)$values[1]
+  my.inv.part=1/{1+my.eigen}
+  my.wilks=my.inv.part
+  for(i in 2:dim(my.matrix)[1]){
+    my.eigen=eigen(my.matrix)$values[i]
+    my.inv.part=1/{1+my.eigen}
+    my.wilks=my.wilks*my.inv.part
+  }
+  return(my.wilks)
+  }else if(test.stat=="Pillai" | test.stat=="Roy"){
+    my.eigen=eigen(my.matrix)$values[1]
+    my.theta=my.eigen/{1+my.eigen}
+    if(test.stat=="Roy"){
+      return(my.theta)
+    }
+    my.pillai=my.theta
+    for(i in 2:dim(my.matrix)[1]){
+      my.eigen=eigen(my.matrix)$values[i]
+      my.theta=my.eigen/{1+my.eigen}
+      my.pillai=my.pillai+my.theta
+    }
+    return(my.pillai)
+  }
+
+}
 #' Partial Name Search of Columns
 #'
 #' Helper function to quickly get list of column names
