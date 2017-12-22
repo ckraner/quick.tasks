@@ -1230,8 +1230,25 @@ quick.reg = function(my.model,
 
 
         #### Put in decomposed factors (y constrasts)
-        #current.y=1
-        if(show.y.contrasts & {i!=1 | show.intercept}){
+        #### Intercept
+        if({show.intercept & i==1}){
+          for(y in 1:my.y.levels){
+            my.name=paste(rownames(my.SSP.total)[y],sep="")
+            my.test.stat=NA
+
+            my.SS=my.SSP.treat[[i]][y,y]
+            my.df=my.SSP.treat.df[i]
+            my.resid.df=my.SSP.err.df
+
+            my.f.val={my.SS/my.df}/{sum(diag(my.SSP.err))/my.resid.df}
+            my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
+
+            my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.f.val,my.SS,my.df,NA,my.resid.df,my.p.val)
+            my.line.var=my.line.var+1
+          }
+        }
+        #### Other
+        if({show.y.contrasts & i!=1}){
           for(y in 1:my.y.levels){
             my.name=paste(y,"|",names(my.SSP.treat)[i],sep="")
             my.test.stat=NA
@@ -1304,7 +1321,7 @@ quick.reg = function(my.model,
         #### Put in treatment
         #### From Type I statistics
         if(i==1){
-          my.test.stat=NA
+          my.test.stat=quick.m.test(my.SS.type.1.change.total,test.stat)
 
           my.SS=sum(diag(my.SS.type.1.change.total))
           my.df=my.SSP.treat.change.df
@@ -1417,7 +1434,6 @@ quick.reg = function(my.model,
         sprinkle(cols = "p.val", fn = quote(pvalString(
           value, digits = 3, format = "default"
         )))%>%
-        sprinkle_border(rows=1,border="bottom")%>%
         sprinkle_border(rows={1+ifelse(show.intercept,my.y.levels,0)},border="bottom")
 
       ##### Make glance stats
