@@ -1189,7 +1189,7 @@ quick.reg = function(my.model,
       #### Get total change stuff
       my.total.change=my.SSP.err+my.SSP.treat.change
       the.total.change.SS=the.resid.SS+sum(diag(my.SS.type.1.change.total))
-      the.total.change.df=the.resid.df+my.SSP.treat.change.df
+      the.total.change.df=the.resid.df+{my.SSP.treat.change.df/my.y.levels}
 
 
       #my.treat.err=solve(my.SSP.err)%*%my.SSP.treat[[length(my.SSP.treat)]]
@@ -1376,11 +1376,11 @@ quick.reg = function(my.model,
       }
 
       #### Put in residuals, total change, total ss
-      my.manova.table[my.line.var,]=c("Total Residuals",NA,NA,the.resid.SS,the.resid.df,NA,NA,NA)
+      my.manova.table[my.line.var,]=c("Total Residuals",NA,NA,the.resid.SS,the.resid.df,NA,my.y.levels*the.resid.df,NA)
       my.line.var=my.line.var+1
       if(show.y.contrasts){
         for(i in 1:my.y.levels){
-          my.manova.table[my.line.var,]=c(paste(i,"|Residuals",sep=""),NA,NA,my.SSP.err[i,i],NA,NA,NA,NA)
+          my.manova.table[my.line.var,]=c(paste(i,"|Residuals",sep=""),NA,NA,my.SSP.err[i,i],the.resid.df,NA,NA,NA)
           my.line.var=my.line.var+1
         }
       }
@@ -1390,9 +1390,9 @@ quick.reg = function(my.model,
           my.line.var=my.line.var+1
         }
       }
-      my.manova.table[my.line.var,]=c("Total Change",NA,NA,the.total.change.SS,the.total.change.df,NA,NA,NA)
+      my.manova.table[my.line.var,]=c("Total Change",NA,NA,the.total.change.SS,the.total.change.df,NA,my.y.levels*the.total.change.df,NA)
       my.line.var=my.line.var+1
-      my.manova.table[my.line.var,]=c("Total SS",NA,NA,quick.tr(my.SSP.total),NA,my.SSP.total.df,NA,NA)
+      my.manova.table[my.line.var,]=c("Total SS",NA,NA,quick.tr(my.SSP.total),the.total.change.df,NA,my.y.levels*the.total.change.df,NA)
 
 
       for(i in 2:dim(my.manova.table)[2]){
