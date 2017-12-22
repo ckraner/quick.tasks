@@ -903,7 +903,7 @@ quick.reg = function(my.model,
 
 
       my.new.df=my.model$model
-
+      my.y.levels=dim(my.model$model[[1]])[2]
 
 
       #### NULL MODEL ####
@@ -912,6 +912,8 @@ quick.reg = function(my.model,
       my.new.df.inc=my.new.df
       my.new.model=NULL
       my.new.model[[1]]=my.null.model
+
+
 
       #### Type I & II SS ####
       j=dim(my.new.df)[2]
@@ -938,62 +940,108 @@ quick.reg = function(my.model,
       my.SS.type.1=NULL
       my.SS.type.1.change=NULL
 
-        #### Type I SS
+      #### Type I SS
       #### Also treatment change
-        #1+n
-        my.SS.type.1.dfs=NULL
-        the.var.length=dim(my.new.df)[2]
-        for(i in 1:the.var.length){
-          my.SS.type.1.dfs[[i]]=my.new.model[[i]]
-        }
+      #1+n
+      my.SS.type.1.dfs=NULL
+      the.var.length=dim(my.new.df)[2]
+      for(i in 1:the.var.length){
+        my.SS.type.1.dfs[[i]]=my.new.model[[i]]
+      }
 
-        ## Null change
-        my.SS.type.1.change[[1]]=summary(my.SS.type.1.dfs[[2]])$SS[[1]]
-        for(i in 2:the.var.length-1){
-          my.SS.type.1.change[[i]]=summary(my.SS.type.1.dfs[[i+1]])$SS[[i]]
-        }
+      ## Null change
+      my.SS.type.1.change[[1]]=summary(my.SS.type.1.dfs[[2]])$SS[[1]]
+      for(z in 2:the.var.length-1){
+        my.SS.type.1.change[[z]]=summary(my.SS.type.1.dfs[[z+1]])$SS[[z]]
+      }
 
-        #### Make treatment
-        my.SS.type.1.change.total=0
-        for(i in 1:length(my.SS.type.1.change)){
-          my.SS.type.1.change.total=my.SS.type.1.change.total+my.SS.type.1.change[[i]]
-        }
+      #### Make treatment
+      my.SS.type.1.change.total=0
+      for(y in 1:length(my.SS.type.1.change)){
+        my.SS.type.1.change.total=my.SS.type.1.change.total+my.SS.type.1.change[[y]]
+      }
 
-        #they are type 2, here is proof.
-      # if(SS.type==2 | SS.type=="II"){
-      #   my.SS.type=NULL
-      #   my.SS.type.change=NULL
-      #   #### Type II SS
-      #   the.var.length=dim(my.new.df)[2]-1
-      #   kappa=the.var.length
-      #   #3n+1
-      #   my.SS.type.change[[1]]=summary(my.new.model[[kappa+1]])$SS[the.var.length]
-      #   for(i in 2:{dim(my.new.df)[2]-1}){
-      #   my.gamma=kappa*i+1
-      #   my.SS.type.change[[i]]=summary(my.new.model[[my.gamma]])$SS[the.var.length]
+      #### Type II SS
+      #they are type 2, here is proof.
+      my.SS.type.2=NULL
+      my.SS.type.2.change=NULL
+      my.SSP.type.2.change.fa=NULL
+      my.latent.SSP.type.2.change=NULL
+      my.SSP.type.2.treat.fa=NULL
+      my.latent.SSP.type.2.treat=NULL
+
+      #### Type II SS
+      the.var.length=dim(my.new.df)[2]-1
+      kappa=the.var.length
+      #3n+1
+      my.SS.type.2.change[[1]]=summary(my.new.model[[kappa+1]])$SS[the.var.length]
+      #### Make latent
+      #### Make latent variables (~equivalent to ANOVAs) of Full matrix
+      my.SSP.type.2.change.fa.eigen=eigen(my.SS.type.2.change[[1]][[1]])
+      my.SSP.type.2.change.fa.values=1/sqrt(my.SSP.type.2.change.fa.eigen$values)
+      for(n in 2:length(my.SSP.type.2.change.fa.values)){
+        my.SSP.type.2.change.fa.values=rbind(my.SSP.type.2.change.fa.values,my.SSP.type.2.change.fa.values)
+      }
+      my.SSP.type.2.change.fa.values.t=t(my.SSP.total.fa.values)
+
+      ###This
+      my.SSP.type.2.change.fa[[1]]=my.SSP.type.2.change.fa.eigen$vectors%*%my.SSP.type.2.change.fa.values.t
+
+      ###This
+      my.latent.SSP.type.2.change[[1]]=my.SS.type.2.change[[1]][[1]]%*%my.SSP.type.2.change.fa[[1]]
+
+      # my.SSP.treat.fa.eigen=NULL
+      # my.SSP.treat.fa.values=NULL
+      # my.SSP.treat.fa.values.t=NULL
+      # my.SSP.treat.fa=NULL
+      # my.latent.SSP.treat=NULL
+      # for(k in 2:{length(my.SS.type.2.change)-1}){
+      #   my.SSP.treat.fa.eigen[[k]]=eigen(my.SS.type.2.change[[1]])
+      #   my.SSP.treat.fa.values[[k]]=tryCatch(as.matrix({1/sqrt(my.SSP.treat.fa.eigen[[k]]$values)}),warning=function(w){
+      #     my.SSP.treat.fa.values[[k]]=matrix(ncol=1,nrow=length(my.SSP.treat.fa.eigen[[k]]$values))
+      #     for(j in 1:length(my.SSP.treat.fa.eigen[[k]]$values)){
+      #       my.SSP.treat.fa.values[[k]][j]={1/sqrt(max(my.SSP.treat.fa.eigen[[k]]$values[j],0))}
+      #       if(my.SSP.treat.fa.values[[k]][j]==Inf){
+      #         my.SSP.treat.fa.values[[k]][j]=0
+      #       }
+      #
+      #     }
+      #     return(my.SSP.treat.fa.values[[k]])
+      #   })
+      #   for(j in 2:length(my.SSP.treat.fa.values[[k]])){
+      #     my.SSP.treat.fa.values[[k]]=cbind(my.SSP.treat.fa.values[[k]],my.SSP.treat.fa.values[[k]])
       #   }
-
-
-      #### Have incremental model
-      #### Make incremental NULL SS
-      # my.NULL.cumulative.SS=NULL
-      # for(i in 2:dim(my.new.df)[2]){
-      #   my.NULL.cumulative.SS[[i-1]]=anova(my.new.model[[i]],my.new.model[[1]])
+      #   #my.SSP.treat.fa.values.t[[i]]=t(my.SSP.treat.fa.values[[i]])
+      #   my.SSP.type.2.treat.fa[[1]][[k]]=my.SSP.treat.fa.eigen[[k]]$vectors%*%my.SSP.treat.fa.values[[k]]
+      #
+      #   my.latent.SSP.type.2.change[[1]][[k]]=my.SS.type.2.change[[k]][[1]]%*%my.SSP.type.2.treat.fa[[1]][[k]]
       # }
 
 
+      for(l in 2:{dim(my.new.df)[2]-1}){
+        my.gamma=kappa*l+1
+        my.SS.type.2.change[[l]]=summary(my.new.model[[my.gamma]])$SS[the.var.length]
+        my.SSP.type.2.change.fa.eigen=eigen(my.SS.type.2.change[[l]][[1]])
+        my.SSP.type.2.change.fa.values=1/sqrt(my.SSP.type.2.change.fa.eigen$values)
+        for(n in 2:length(my.SSP.type.2.change.fa.values)){
+          my.SSP.type.2.change.fa.values=rbind(my.SSP.type.2.change.fa.values,my.SSP.type.2.change.fa.values)
+        }
+        my.SSP.type.2.change.fa.values.t=t(my.SSP.total.fa.values)
+
+        ###This
+        my.SSP.type.2.change.fa[[l]]=my.SSP.type.2.change.fa.eigen$vectors%*%my.SSP.type.2.change.fa.values.t
+
+        ###This
+        my.latent.SSP.type.2.change[[l]]=my.SS.type.2.change[[l]][[1]]%*%my.SSP.type.2.change.fa[[l]]
+
+      }
 
 
-      #my.dep.var=my.vars[[2]]
-      # my.other.vars=names(new.model$model)
-      # my.var.grep=grep(paste("^",my.dep.var,"$",sep=""),my.other.vars)
-      # my.other.vars=my.other.vars[-my.var.grep]
-      # my.formula=paste("~",my.other.vars[1])
-      # for(i in 2:length(my.other.vars)){
-      #   my.formula=paste(my.formula,"*",my.other.vars[i],sep="")}
+      #### Make SSCPs  of full matrix####
       #### Get SSP treatment and error
-      my.SSP.treat=car::Anova(my.model,type=SS.type,test=test.stat)$SSP
-      my.SSP.err=car::Anova(my.model,type=SS.type,test=test.stat)$SSPE
+
+      my.SSP.treat=car::Anova(my.new.model[[my.y.levels+1]],type=SS.type,test=test.stat)$SSP
+      my.SSP.err=car::Anova(my.new.model[[my.y.levels+1]],type=SS.type,test=test.stat)$SSPE
 
       ### Get total SSP
       my.SSP.treat.total=my.SSP.treat[[1]]
@@ -1004,15 +1052,20 @@ quick.reg = function(my.model,
 
       my.y.levels=dim(my.SSP.total)[1]
 
-      #### Make latent variables (~equivalent to ANOVAs)
+
+      #### LATENT MODEL ####
+      #### Make latent variables (~equivalent to ANOVAs) of Full matrix
       my.SSP.total.fa.eigen=eigen(my.SSP.total)
       my.SSP.total.fa.values=1/sqrt(my.SSP.total.fa.eigen$values)
       for(i in 2:length(my.SSP.total.fa.values)){
         my.SSP.total.fa.values=rbind(my.SSP.total.fa.values,my.SSP.total.fa.values)
       }
       my.SSP.total.fa.values.t=t(my.SSP.total.fa.values)
+
+      ###This
       my.SSP.total.fa=my.SSP.total.fa.eigen$vectors%*%my.SSP.total.fa.values.t
 
+      ###This
       my.latent.SSP.total=my.SSP.total%*%my.SSP.total.fa
 
       my.SSP.treat.fa.eigen=NULL
@@ -1042,7 +1095,42 @@ quick.reg = function(my.model,
         my.latent.SSP.treat[[i]]=my.SSP.treat[[i]]%*%my.SSP.treat.fa[[i]]
       }
 
+      #### Get SSP treatment and error for Type II error SS
 
+      my.SSP.treat=car::Anova(my.new.model[[my.y.levels+1]],type=SS.type,test=test.stat)$SSP
+      my.SSP.err=car::Anova(my.new.model[[my.y.levels+1]],type=SS.type,test=test.stat)$SSPE
+
+      ### Get total SSP
+      my.SSP.treat.total=my.SSP.treat[[1]]
+      for(i in 2:{length(my.SSP.treat)}){
+        my.SSP.treat.total=my.SSP.treat.total+my.SSP.treat[[i]]
+      }
+      my.SSP.total=my.SSP.treat.total+my.SSP.err
+
+      my.y.levels=dim(my.SSP.total)[1]
+
+      #### Have incremental model
+      #### Make incremental NULL SS
+      # my.NULL.cumulative.SS=NULL
+      # for(i in 2:dim(my.new.df)[2]){
+      #   my.NULL.cumulative.SS[[i-1]]=anova(my.new.model[[i]],my.new.model[[1]])
+      # }
+
+
+
+
+      #my.dep.var=my.vars[[2]]
+      # my.other.vars=names(new.model$model)
+      # my.var.grep=grep(paste("^",my.dep.var,"$",sep=""),my.other.vars)
+      # my.other.vars=my.other.vars[-my.var.grep]
+      # my.formula=paste("~",my.other.vars[1])
+      # for(i in 2:length(my.other.vars)){
+      #   my.formula=paste(my.formula,"*",my.other.vars[i],sep="")}
+
+
+
+
+      #### Make error matrices
       my.SSP.err.fa.eigen=eigen(my.SSP.err)
       my.SSP.err.fa.values=1/sqrt(my.SSP.err.fa.eigen$values)
       for(i in 2:length(my.SSP.err.fa.values)){
@@ -1094,7 +1182,7 @@ quick.reg = function(my.model,
 
 
       #### Get residual stuff
-      the.resid.SS=quick.tr(my.SSP.err)
+      the.resid.SS=sum(diag(my.SSP.err))
       the.resid.df=my.model$df.residual
 
       #### Get total change stuff
@@ -1103,8 +1191,8 @@ quick.reg = function(my.model,
       the.total.change.df=the.resid.df+my.SSP.treat.change.df
 
 
-      my.treat.err=solve(my.SSP.err)%*%my.SSP.treat[[length(my.SSP.treat)]]
-      quick.m.test(my.treat.err,"Wilks")
+      #my.treat.err=solve(my.SSP.err)%*%my.SSP.treat[[length(my.SSP.treat)]]
+      #quick.m.test(my.treat.err,"Wilks")
 
       #### Make basic table ####
       my.table.names=c("var","test.stat","f.val","SS","df","resid df","p.val")
@@ -1173,7 +1261,7 @@ quick.reg = function(my.model,
           #### Show latent treatments (ANOVAs)
           #### Need to change latents to type II
           if(show.latent){
-            for(b in 1:my.y.levels){
+            for(b in 1:{my.y.levels}){
               my.SS=sum(weighted.residuals(my.null.model)[,b]^2)-sum(weighted.residuals(my.model)[,b]^2)
               my.df=my.SSP.treat.change.df/my.y.levels
               #### Should really be a min statement, but for later...
@@ -1229,14 +1317,21 @@ quick.reg = function(my.model,
 
 
         #### Put in latents (ANOVA)
-
+        my.counter=NULL
+        for(r in 2:my.y.levels){
+          my.counter=c(my.counter,r)
+        }
+        my.counter=c(my.counter,1)
         if(show.latent &i!=1){
-          for(y in 1:my.y.levels){
+          my.i.temp=my.counter[i-1]
+          for(y in 1:{my.y.levels}){
             my.name=paste(y,"|",names(my.SSP.treat)[i],sep="")
             my.test.stat=NA
             my.resid.df=my.SSP.err.df
-            my.SS=my.latent.SSP.treat[[i]][y,y]
-            my.df=my.SSP.treat.df[i]
+
+
+            my.SS=my.latent.SSP.type.2.change[[my.i.temp]][y,1]
+            my.df=my.SSP.treat.df[my.i.temp]
             my.f.val={my.SS/my.df}/{my.latent.SSP.err[y,y]/my.resid.df}
             my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
