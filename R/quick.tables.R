@@ -1461,9 +1461,9 @@ quick.reg = function(my.model,
             ifelse(show.intercept,my.y.levels,0)},
                         border="bottom")%>%
         sprinkle_round(cols=2:v.p.len,round=3)%>%
-        sprinkle_colnames("Variable",paste(test.stat, "<br /> Test Statistic",sep=""),
+        sprinkle_colnames("Variable",paste(test.stat, "<br /> Test <br /> Statistic",sep=""),
                           "F-Value",paste("Type II <br /> Sums of <br /> Squares",sep=""),"dF",
-                          "Mult. <br /> dF","Resid <br /> dF","P-value")%>%
+                          "Mult <br /> dF","Resid <br /> dF","P-value")%>%
         sprinkle_align(rows=1,halign="center",part="head")%>%
         sprinkle_pad(rows=1:{my.line.var},pad=5)%>%
         sprinkle(cols = "p.val", fn = quote(pvalString(
