@@ -1196,7 +1196,7 @@ quick.reg = function(my.model,
 
         my.SS=quick.tr(my.SSP.treat[[i]])
         my.df=my.y.levels*my.SSP.treat.df[i]
-        my.resid.df=ifelse(i==1,my.y.levels*the.resid.df,min({my.SSP.err.df*my.SSP.treat.df[i]-my.SSP.treat.df[i]},my.y.levels*my.SSP.err.df))
+        my.resid.df=ifelse(i==1,{my.y.levels*the.resid.df},min({my.SSP.err.df*my.SSP.treat.df[i]-my.SSP.treat.df[i]},my.y.levels*my.SSP.err.df-my.SSP.treat.df[i]))
         my.f.val={my.SS/my.df}/{the.resid.SS/my.resid.df}
         my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
@@ -1284,7 +1284,7 @@ quick.reg = function(my.model,
             my.name=paste(y,"|",names(my.SSP.treat)[i],sep="")
             my.df=my.SSP.treat.df[my.i.temp]
             my.test.stat=NA
-            my.resid.df=my.SSP.err.df-my.y.levels
+            my.resid.df=my.SSP.err.df-my.df
 
 
             my.SS=my.latent.SSP.type.2.change[[my.i.temp]][my.y,1]
@@ -1341,7 +1341,7 @@ quick.reg = function(my.model,
               my.SS=sum(weighted.residuals(my.null.model)[,b]^2)-sum(weighted.residuals(my.model)[,b]^2)
               my.df=my.SSP.treat.change.df/my.y.levels
               #### Should really be a min statement, but for later...
-              my.resid.df=my.SSP.err.df
+              my.resid.df=my.SSP.err.df-my.df
               my.f.val={my.SS/my.df}/{my.latent.SSP.err[y,y]/my.resid.df}
               my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
               my.manova.table[my.line.var,]=c(paste(b,"|Treatment",sep=""),NA,my.f.val,my.SS,my.df,NA,{my.resid.df},my.p.val)
@@ -1405,7 +1405,7 @@ quick.reg = function(my.model,
                         border="bottom")%>%
         sprinkle_round(cols=2:v.p.len,round=3)%>%
         sprinkle_colnames("Variable",paste(test.stat, "<br /> Test Statistic",sep=""),
-                          "F-Value",paste("Sums of <br /> Squares",sep=""),"dF",
+                          "F-Value",paste("Type II <br /> Sums of <br /> Squares",sep=""),"dF",
                           "Mult. <br /> dF","Resid <br /> dF","P-value")%>%
         sprinkle_align(rows=1,halign="center",part="head")%>%
         sprinkle_pad(rows=1:{my.line.var},pad=5)%>%
