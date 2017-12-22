@@ -877,16 +877,16 @@ quick.reg = function(my.model,
 
       #### for expansion
       if (!VIF & !part.eta) {
-        v.p.len = 7
+        v.p.len = 8
         v.p.rep = 0
       } else if (!VIF) {
-        v.p.len = 8
+        v.p.len = 9
         v.p.rep = 1
       } else if (!part.eta) {
-        v.p.len = 8
+        v.p.len = 9
         v.p.rep = 1
       } else{
-        v.p.len = 9
+        v.p.len = 10
         v.p.rep = 2
       }
 
@@ -1195,7 +1195,7 @@ quick.reg = function(my.model,
       #quick.m.test(my.treat.err,"Wilks")
 
       #### Make basic table ####
-      my.table.names=c("var","test.stat","f.val","SS","df","resid df","p.val")
+      my.table.names=c("var","test.stat","f.val","df","SS","mult.df","resid df","p.val")
 
       my.manova.table=as.data.frame(matrix(ncol=v.p.len,nrow=1))
       names(my.manova.table)=my.table.names
@@ -1222,7 +1222,7 @@ quick.reg = function(my.model,
         my.f.val={my.SS/my.df}/{the.resid.SS/my.resid.df}
         my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
-        my.manova.table[my.line.var,]=c(names(my.SSP.treat)[i],my.test.stat,my.f.val,my.SS,my.df,my.resid.df,my.p.val)
+        my.manova.table[my.line.var,]=c(names(my.SSP.treat)[i],my.test.stat,my.f.val,ifelse(i==1,my.df,my.df/my.y.levels),my.SS,my.df,my.resid.df,my.p.val)
         my.line.var=my.line.var+1
 
         #### Put in treatment
@@ -1238,7 +1238,7 @@ quick.reg = function(my.model,
           my.f.val={my.SS/my.df}/{sum(diag(my.SSP.err))/my.resid.df}
           my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
-          my.manova.table[my.line.var,]=c("Treatment",my.test.stat,my.f.val,my.SS,my.df,my.resid.df,my.p.val)
+          my.manova.table[my.line.var,]=c("Treatment",my.test.stat,my.f.val,NA,my.SS,my.df,my.resid.df,my.p.val)
           my.line.var=my.line.var+1
 
           #### Y Contrasts
@@ -1253,13 +1253,18 @@ quick.reg = function(my.model,
 
               my.f.val={my.SS/my.df}/{sum(diag(my.SSP.err))/my.resid.df}
               my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
-              my.manova.table[my.line.var,]=c(paste(b,"|Treatment",sep=""),my.test.stat,my.f.val,my.SS,{my.df/my.y.levels},{my.resid.df/my.y.levels},my.p.val)
+              my.manova.table[my.line.var,]=c(paste(b,"|Treatment",sep=""),my.test.stat,my.f.val,NA,my.SS,{my.df/my.y.levels},{my.resid.df/my.y.levels},my.p.val)
               my.line.var=my.line.var+1
             }
           }
 
           #### Show latent treatments (ANOVAs)
           #### Need to change latents to type II
+          my.counter=NULL
+          for(r in 2:my.y.levels){
+            my.counter=c(my.counter,r)
+          }
+          my.counter=c(my.counter,1)
           if(show.latent){
             for(b in 1:{my.y.levels}){
               my.SS=sum(weighted.residuals(my.null.model)[,b]^2)-sum(weighted.residuals(my.model)[,b]^2)
@@ -1268,7 +1273,7 @@ quick.reg = function(my.model,
               my.resid.df=my.SSP.err.df
               my.f.val={my.SS/my.df}/{my.latent.SSP.err[y,y]/my.resid.df}
               my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
-              my.manova.table[my.line.var,]=c(paste(b,"|Treatment",sep=""),NA,my.f.val,my.SS,my.df,{my.resid.df},my.p.val)
+              my.manova.table[my.line.var,]=c(paste(b,"|Treatment",sep=""),NA,my.f.val,NA,my.SS,my.df,{my.resid.df},my.p.val)
               my.line.var=my.line.var+1
             }
           }
@@ -1289,7 +1294,7 @@ quick.reg = function(my.model,
             my.f.val={my.SS/my.df}/{sum(diag(my.SSP.err))/my.resid.df}
             my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
-            my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.f.val,my.SS,my.df,my.resid.df,my.p.val)
+            my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.df,my.f.val,my.SS,my.df,my.resid.df,my.p.val)
             my.line.var=my.line.var+1
           }
         }
@@ -1309,7 +1314,7 @@ quick.reg = function(my.model,
               my.df=my.phia$`num Df`[k]
               my.p.val=my.phia$`Pr(>F)`[k]
               my.resid.df=my.phia$`den Df`[k]
-              my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.f.val,my.SS,my.df,my.resid.df,my.p.val)
+              my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.df,my.f.val,my.SS,my.df,my.resid.df,my.p.val)
               my.line.var=my.line.var+1
             }
           }
@@ -1323,19 +1328,27 @@ quick.reg = function(my.model,
         }
         my.counter=c(my.counter,1)
         if(show.latent &i!=1){
+
           my.i.temp=my.counter[i-1]
           for(y in 1:{my.y.levels}){
+            # my.y=NULL
+            # if(y>my.y.levels){
+            #   my.y=1
+            # }else{
+            #   my.y=y
+            # }
+            my.y=y
             my.name=paste(y,"|",names(my.SSP.treat)[i],sep="")
             my.test.stat=NA
             my.resid.df=my.SSP.err.df
 
 
-            my.SS=my.latent.SSP.type.2.change[[my.i.temp]][y,1]
+            my.SS=my.latent.SSP.type.2.change[[my.i.temp]][my.y,1]
             my.df=my.SSP.treat.df[my.i.temp]
-            my.f.val={my.SS/my.df}/{my.latent.SSP.err[y,y]/my.resid.df}
+            my.f.val={my.SS/my.df}/{my.latent.SSP.err[my.y,my.y]/my.resid.df}
             my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
-            my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.f.val,my.SS,my.df,my.resid.df,my.p.val)
+            my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.f.val,NA,my.SS,my.df,my.resid.df,my.p.val)
             my.line.var=my.line.var+1
           }
         }
@@ -1344,23 +1357,23 @@ quick.reg = function(my.model,
       }
 
       #### Put in residuals, total change, total ss
-      my.manova.table[my.line.var,]=c("Total Residuals",NA,NA,the.resid.SS,the.resid.df,NA,NA)
+      my.manova.table[my.line.var,]=c("Total Residuals",NA,NA,NA,the.resid.SS,the.resid.df,NA,NA)
       my.line.var=my.line.var+1
       if(show.y.contrasts){
         for(i in 1:my.y.levels){
-          my.manova.table[my.line.var,]=c(paste(i,"|Residuals",sep=""),NA,NA,my.SSP.err[i,i],NA,NA,NA)
+          my.manova.table[my.line.var,]=c(paste(i,"|Residuals",sep=""),NA,NA,NA,my.SSP.err[i,i],NA,NA,NA)
           my.line.var=my.line.var+1
         }
       }
       if(show.latent){
         for(i in 1:my.y.levels){
-          my.manova.table[my.line.var,]=c(paste(i,"|Residuals",sep=""),NA,NA,my.latent.SSP.err[i,i],NA,NA,NA)
+          my.manova.table[my.line.var,]=c(paste(i,"|Residuals",sep=""),NA,NA,NA,my.latent.SSP.err[i,i],NA,NA,NA)
           my.line.var=my.line.var+1
         }
       }
-      my.manova.table[my.line.var,]=c("Total Change",NA,NA,the.total.change.SS,the.total.change.df,NA,NA)
+      my.manova.table[my.line.var,]=c("Total Change",NA,NA,NA,the.total.change.SS,the.total.change.df,NA,NA)
       my.line.var=my.line.var+1
-      my.manova.table[my.line.var,]=c("Total SS",NA,NA,quick.tr(my.SSP.total),my.SSP.total.df,NA,NA)
+      my.manova.table[my.line.var,]=c("Total SS",NA,NA,NA,quick.tr(my.SSP.total),my.SSP.total.df,NA,NA)
 
 
       for(i in 2:dim(my.manova.table)[2]){
@@ -1390,10 +1403,10 @@ quick.reg = function(my.model,
         sprinkle_border(cols={7+v.p.rep},border="right",part="head")%>%
         sprinkle_border(rows=1,border=c("top","bottom"),part="head")%>%
         sprinkle_border(rows={1+ifelse(show.y.contrasts | show.latent,my.y.levels+1,1)},border="bottom")%>%
-        sprinkle_round(cols=2:6,round=3)%>%
+        sprinkle_round(cols=2:v.p.len,round=3)%>%
         sprinkle_colnames("Variable",paste(test.stat, "<br /> Test Statistic",sep=""),
-                          "F-Value",paste("Type ",2,"<br /> Sums of Sq",sep=""),
-                          "dF","Resid <br /> dF","P-value")%>%
+                          "F-Value","dF",paste("Type ",2,"<br /> Sums of Sq",sep=""),
+                          "Mult. <br /> dF","Resid <br /> dF","P-value")%>%
         sprinkle_align(rows=1,halign="center",part="head")%>%
         sprinkle_pad(rows=1:{7+v.p.rep},pad=5)%>%
         sprinkle(cols = "p.val", fn = quote(pvalString(
@@ -1403,7 +1416,7 @@ quick.reg = function(my.model,
 
       ##### Make glance stats
       my_glance_stats=as.data.frame(matrix(ncol=v.p.len,nrow=1))
-      my_glance_stats[1,]=c(paste("Method: QR decomposition",if(show.contrasts){paste(" <br />Adjustment: ", adjustment,sep="")},if(show.latent){paste(" <br /> Latent Contrasts")}),rep(NA,{6+v.p.rep}))
+      my_glance_stats[1,]=c(paste("Method: QR decomposition",if(show.contrasts){paste(" <br />Adjustment: ", adjustment,sep="")},if(show.latent){paste(" <br /> Latent Contrasts")}),rep(NA,{7+v.p.rep}))
 
 
       my.dust=pixiedust::redust(my.dust,my_glance_stats,part="foot")%>%
