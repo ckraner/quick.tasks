@@ -976,6 +976,10 @@ quick.reg = function(my.model,
       kappa=the.var.length
       #3n+1
       my.SS.type.2.change[[1]]=summary(my.new.model[[kappa+1]])$SS[the.var.length]
+
+
+
+
       #### Make latent
       #### Make latent variables (~equivalent to ANOVAs) of Full matrix
       my.SSP.type.2.change.fa.eigen=eigen(my.SS.type.2.change[[1]][[1]])
@@ -990,33 +994,6 @@ quick.reg = function(my.model,
 
       ###This
       my.latent.SSP.type.2.change[[1]]=my.SS.type.2.change[[1]][[1]]%*%my.SSP.type.2.change.fa[[1]]
-
-      # my.SSP.treat.fa.eigen=NULL
-      # my.SSP.treat.fa.values=NULL
-      # my.SSP.treat.fa.values.t=NULL
-      # my.SSP.treat.fa=NULL
-      # my.latent.SSP.treat=NULL
-      # for(k in 2:{length(my.SS.type.2.change)-1}){
-      #   my.SSP.treat.fa.eigen[[k]]=eigen(my.SS.type.2.change[[1]])
-      #   my.SSP.treat.fa.values[[k]]=tryCatch(as.matrix({1/sqrt(my.SSP.treat.fa.eigen[[k]]$values)}),warning=function(w){
-      #     my.SSP.treat.fa.values[[k]]=matrix(ncol=1,nrow=length(my.SSP.treat.fa.eigen[[k]]$values))
-      #     for(j in 1:length(my.SSP.treat.fa.eigen[[k]]$values)){
-      #       my.SSP.treat.fa.values[[k]][j]={1/sqrt(max(my.SSP.treat.fa.eigen[[k]]$values[j],0))}
-      #       if(my.SSP.treat.fa.values[[k]][j]==Inf){
-      #         my.SSP.treat.fa.values[[k]][j]=0
-      #       }
-      #
-      #     }
-      #     return(my.SSP.treat.fa.values[[k]])
-      #   })
-      #   for(j in 2:length(my.SSP.treat.fa.values[[k]])){
-      #     my.SSP.treat.fa.values[[k]]=cbind(my.SSP.treat.fa.values[[k]],my.SSP.treat.fa.values[[k]])
-      #   }
-      #   #my.SSP.treat.fa.values.t[[i]]=t(my.SSP.treat.fa.values[[i]])
-      #   my.SSP.type.2.treat.fa[[1]][[k]]=my.SSP.treat.fa.eigen[[k]]$vectors%*%my.SSP.treat.fa.values[[k]]
-      #
-      #   my.latent.SSP.type.2.change[[1]][[k]]=my.SS.type.2.change[[k]][[1]]%*%my.SSP.type.2.treat.fa[[1]][[k]]
-      # }
 
 
       for(l in 2:{dim(my.new.df)[2]-1}){
@@ -1219,7 +1196,7 @@ quick.reg = function(my.model,
 
         my.SS=quick.tr(my.SSP.treat[[i]])
         my.df=my.y.levels*my.SSP.treat.df[i]
-        my.resid.df=min({my.SSP.err.df*my.SSP.treat.df[i]-my.SSP.treat.df[i]},my.y.levels*my.SSP.err.df)
+        my.resid.df=ifelse(i==1,my.y.levels*the.resid.df,min({my.SSP.err.df*my.SSP.treat.df[i]-my.SSP.treat.df[i]},my.y.levels*my.SSP.err.df))
         my.f.val={my.SS/my.df}/{the.resid.SS/my.resid.df}
         my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
@@ -1280,7 +1257,7 @@ quick.reg = function(my.model,
               my.df=my.phia$`num Df`[k]
               my.p.val=my.phia$`Pr(>F)`[k]
               my.resid.df=my.phia$`den Df`[k]
-              my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.f.val,my.SS,my.df,my.df,my.resid.df,my.p.val)
+              my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.f.val,my.SS,NA,my.df,my.resid.df,my.p.val)
               my.line.var=my.line.var+1
             }
           }
@@ -1305,12 +1282,13 @@ quick.reg = function(my.model,
             # }
             my.y=y
             my.name=paste(y,"|",names(my.SSP.treat)[i],sep="")
+            my.df=my.SSP.treat.df[my.i.temp]
             my.test.stat=NA
-            my.resid.df=my.SSP.err.df
+            my.resid.df=my.SSP.err.df-my.df
 
 
             my.SS=my.latent.SSP.type.2.change[[my.i.temp]][my.y,1]
-            my.df=my.SSP.treat.df[my.i.temp]
+
             my.f.val={my.SS/my.df}/{my.latent.SSP.err[my.y,my.y]/my.resid.df}
             my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
@@ -1331,7 +1309,7 @@ quick.reg = function(my.model,
           my.f.val={my.SS/my.df}/{sum(diag(my.SSP.err))/my.resid.df}
           my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
-          my.manova.table[my.line.var,]=c("Treatment",my.test.stat,my.f.val,my.SS,NA,my.df,my.resid.df,my.p.val)
+          my.manova.table[my.line.var,]=c("Treatment",my.test.stat,my.f.val,my.SS,{my.df/my.y.levels},my.df,my.resid.df,my.p.val)
           my.line.var=my.line.var+1
 
           #### Y Contrasts
@@ -1366,7 +1344,7 @@ quick.reg = function(my.model,
               my.resid.df=my.SSP.err.df
               my.f.val={my.SS/my.df}/{my.latent.SSP.err[y,y]/my.resid.df}
               my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
-              my.manova.table[my.line.var,]=c(paste(b,"|Treatment",sep=""),NA,my.f.val,NA,my.SS,my.df,{my.resid.df},my.p.val)
+              my.manova.table[my.line.var,]=c(paste(b,"|Treatment",sep=""),NA,my.f.val,my.SS,my.df,NA,{my.resid.df},my.p.val)
               my.line.var=my.line.var+1
             }
           }
@@ -1386,14 +1364,14 @@ quick.reg = function(my.model,
       }
       if(show.latent){
         for(i in 1:my.y.levels){
-          my.manova.table[my.line.var,]=c(paste(i,"|Residuals",sep=""),NA,NA,my.latent.SSP.err[i,i],NA,NA,NA,NA)
+          my.manova.table[my.line.var,]=c(paste(i,"|Residuals",sep=""),NA,NA,my.latent.SSP.err[i,i],the.resid.df,NA,NA,NA)
           my.line.var=my.line.var+1
         }
       }
-      my.manova.table[my.line.var,]=c("Total Change",NA,NA,the.total.change.SS,the.total.change.df,NA,my.y.levels*the.total.change.df,NA)
-      my.line.var=my.line.var+1
+      #my.manova.table[my.line.var,]=c("Total Change",NA,NA,the.total.change.SS,the.total.change.df,NA,my.y.levels*the.total.change.df,NA)
+      #my.line.var=my.line.var+1
       my.manova.table[my.line.var,]=c("Total SS",NA,NA,quick.tr(my.SSP.total),the.total.change.df,NA,my.y.levels*the.total.change.df,NA)
-
+      #my.line.var=my.line.var+1
 
       for(i in 2:dim(my.manova.table)[2]){
         my.manova.table[[i]]=as.numeric(my.manova.table[[i]])
@@ -1417,7 +1395,7 @@ quick.reg = function(my.model,
         sprinkle_border(cols=1,border="left")%>%
         sprinkle_border(cols={8+v.p.rep},border="right")%>%
         sprinkle_border(rows=my.line.var,boder="bottom")%>%
-        sprinkle_border(rows=my.line.var-{2+tmp.change},border="top")%>%
+        sprinkle_border(rows=my.line.var-{2+tmp.change}+1,border="top")%>%
         sprinkle_border(cols=1,border="left",part="head")%>%
         sprinkle_border(cols={8+v.p.rep},border="right",part="head")%>%
         sprinkle_border(rows=1,border=c("top","bottom"),part="head")%>%
@@ -1430,7 +1408,7 @@ quick.reg = function(my.model,
                           "F-Value",paste("Sums of <br /> Squares",sep=""),"dF",
                           "Mult. <br /> dF","Resid <br /> dF","P-value")%>%
         sprinkle_align(rows=1,halign="center",part="head")%>%
-        sprinkle_pad(rows=1:{my.line.var+v.p.rep},pad=5)%>%
+        sprinkle_pad(rows=1:{my.line.var},pad=5)%>%
         sprinkle(cols = "p.val", fn = quote(pvalString(
           value, digits = 3, format = "default"
         )))%>%
