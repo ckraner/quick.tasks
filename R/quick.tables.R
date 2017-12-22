@@ -1232,7 +1232,7 @@ quick.reg = function(my.model,
 
             my.SS=my.SSP.treat[[i]][y,y]
             my.df=my.SSP.treat.df[i]
-            my.resid.df=my.SSP.err.df
+            my.resid.df=min(abs(my.y.levels*my.SSP.err.df-my.df*my.SSP.err.df-my.df),abs(my.y.levels*my.SSP.err.df-my.df))
 
             my.f.val={my.SS/my.df}/{sum(diag(my.SSP.err))/my.resid.df}
             my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
@@ -1284,7 +1284,7 @@ quick.reg = function(my.model,
             my.name=paste(y,"|",names(my.SSP.treat)[i],sep="")
             my.df=my.SSP.treat.df[my.i.temp]
             my.test.stat=NA
-            my.resid.df=my.SSP.err.df-my.df
+            my.resid.df=my.SSP.err.df-my.y.levels
 
 
             my.SS=my.latent.SSP.type.2.change[[my.i.temp]][my.y,1]
