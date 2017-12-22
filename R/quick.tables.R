@@ -1210,7 +1210,7 @@ quick.reg = function(my.model,
         #### Intercept
         if({show.intercept & i==1}){
           for(y in 1:my.y.levels){
-            my.name=paste(rownames(my.SSP.total)[y],sep="")
+            my.name=rownames(my.SSP.total)[y]
             my.test.stat=NA
 
             my.SS=my.SSP.treat[[i]][y,y]
@@ -1239,6 +1239,39 @@ quick.reg = function(my.model,
 
             my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.f.val,my.SS,my.df,NA,my.resid.df,my.p.val)
             my.line.var=my.line.var+1
+
+
+            #### Put in latents (ANOVA)
+            my.counter=NULL
+            for(r in 2:my.y.levels){
+              my.counter=c(my.counter,r)
+            }
+            my.counter=c(my.counter,1)
+            if(show.latent &i!=1){
+
+              my.i.temp=my.counter[i-1]
+                # my.y=NULL
+                # if(y>my.y.levels){
+                #   my.y=1
+                # }else{
+                #   my.y=y
+                # }
+                my.y=y
+                my.name=NA
+                my.df=my.SSP.treat.df[my.i.temp]
+                my.test.stat=NA
+                my.resid.df=my.SSP.err.df-my.df
+
+
+                my.SS=my.latent.SSP.type.2.change[[my.i.temp]][my.y,1]
+
+                my.f.val={my.SS/my.df}/{my.latent.SSP.err[my.y,my.y]/my.resid.df}
+                my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
+
+                my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.f.val,my.SS,my.df,NA,my.resid.df,my.p.val)
+                my.line.var=my.line.var+1
+            }
+
           }
         }
 
@@ -1270,7 +1303,7 @@ quick.reg = function(my.model,
           my.counter=c(my.counter,r)
         }
         my.counter=c(my.counter,1)
-        if(show.latent &i!=1){
+        if(show.latent &i!=1 & !show.y.contrasts){
 
           my.i.temp=my.counter[i-1]
           for(y in 1:{my.y.levels}){
@@ -1326,9 +1359,29 @@ quick.reg = function(my.model,
               my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
               my.manova.table[my.line.var,]=c(paste(b,"|Treatment",sep=""),my.test.stat,my.f.val,my.SS,{my.df/my.y.levels},NA,{my.resid.df/my.y.levels},my.p.val)
               my.line.var=my.line.var+1
+
+              if(show.latent){
+                #### Show latent treatments (ANOVAs)
+                #### Need to change latents to type II
+                # my.counter=NULL
+                # for(r in 2:my.y.levels){
+                #   my.counter=c(my.counter,r)
+                # }
+                # my.counter=c(my.counter,1){
+                    my.SS=sum(weighted.residuals(my.null.model)[,b]^2)-sum(weighted.residuals(my.model)[,b]^2)
+                    my.df=my.SSP.treat.change.df/my.y.levels
+                    #### Should really be a min statement, but for later...
+                    my.resid.df=my.SSP.err.df-my.df
+                    my.f.val={my.SS/my.df}/{my.latent.SSP.err[y,y]/my.resid.df}
+                    my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
+                    my.manova.table[my.line.var,]=c(NA,NA,my.f.val,my.SS,my.df,NA,{my.resid.df},my.p.val)
+                    my.line.var=my.line.var+1
+              }
             }
           }
-
+          # if(show.latent & show.y.contrasts){
+          #   my.line.var=my.line.var-1
+          # }
           #### Show latent treatments (ANOVAs)
           #### Need to change latents to type II
           my.counter=NULL
@@ -1336,7 +1389,7 @@ quick.reg = function(my.model,
             my.counter=c(my.counter,r)
           }
           my.counter=c(my.counter,1)
-          if(show.latent){
+          if(show.latent & !show.y.contrasts){
             for(b in 1:{my.y.levels}){
               my.SS=sum(weighted.residuals(my.null.model)[,b]^2)-sum(weighted.residuals(my.model)[,b]^2)
               my.df=my.SSP.treat.change.df/my.y.levels
@@ -1360,9 +1413,13 @@ quick.reg = function(my.model,
         for(i in 1:my.y.levels){
           my.manova.table[my.line.var,]=c(paste(i,"|Residuals",sep=""),NA,NA,my.SSP.err[i,i],the.resid.df,NA,NA,NA)
           my.line.var=my.line.var+1
+          if(show.latent){
+              my.manova.table[my.line.var,]=c(NA,NA,NA,my.latent.SSP.err[i,i],the.resid.df,NA,NA,NA)
+              my.line.var=my.line.var+1
+          }
         }
       }
-      if(show.latent){
+      if(show.latent & !show.y.contrasts){
         for(i in 1:my.y.levels){
           my.manova.table[my.line.var,]=c(paste(i,"|Residuals",sep=""),NA,NA,my.latent.SSP.err[i,i],the.resid.df,NA,NA,NA)
           my.line.var=my.line.var+1
@@ -1400,7 +1457,7 @@ quick.reg = function(my.model,
         sprinkle_border(cols={8+v.p.rep},border="right",part="head")%>%
         sprinkle_border(rows=1,border=c("top","bottom"),part="head")%>%
         sprinkle_border(rows={1+ifelse(show.intercept,my.y.levels,0)},border="bottom")%>%
-        sprinkle_border(rows={1+ifelse(show.y.contrasts | show.latent,my.y.levels+1,1)+
+        sprinkle_border(rows={ifelse(show.y.contrasts,my.y.levels+1,1)+ifelse(show.latent,my.y.levels+1,1)+
             ifelse(show.intercept,my.y.levels,0)},
                         border="bottom")%>%
         sprinkle_round(cols=2:v.p.len,round=3)%>%
@@ -1416,7 +1473,7 @@ quick.reg = function(my.model,
 
       ##### Make glance stats
       my_glance_stats=as.data.frame(matrix(ncol=v.p.len,nrow=1))
-      my_glance_stats[1,]=c(paste("Method: QR decomposition",if(show.contrasts){paste(" <br />Adjustment: ", adjustment,sep="")},if(show.latent){paste(" <br /> Latent Contrasts")}),rep(NA,{7+v.p.rep}))
+      my_glance_stats[1,]=c(paste(ifelse(dim(my.new.df)[1]==dim(myDF)[1],"Data have same number of rows <br />",paste({dim(myDF)[1]-dim(my.new.df)[1]}," cases deleted due to missingness <br />")),"Method: QR decomposition",if(show.contrasts){paste(" <br />Adjustment: ", adjustment,sep="")},if(show.latent){paste(" <br /> Latent Contrasts")}),rep(NA,{7+v.p.rep}))
 
 
       my.dust=pixiedust::redust(my.dust,my_glance_stats,part="foot")%>%
