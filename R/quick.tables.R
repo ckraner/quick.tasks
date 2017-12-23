@@ -1703,7 +1703,7 @@ quick.reg = function(my.model,
       my.line.var=my.line.var+1
       if(show.y.contrasts){
         for(i in 1:my.y.levels){
-          my.manova.table[my.line.var,]=c(paste(i,"|Residuals",sep=""),NA,NA,my.SSP.err[i,i],the.resid.df,NA,NA,NA)
+          my.manova.table[my.line.var,]=c(paste(ifelse(real.names,rownames(my.SSP.total)[i],i),"|Residual",sep=""),NA,NA,my.SSP.err[i,i],the.resid.df,NA,NA,NA)
           my.line.var=my.line.var+1
           if(show.latent){
               my.manova.table[my.line.var,]=c(NA,NA,NA,my.latent.SSP.err[i,i],the.resid.df,NA,NA,NA)
@@ -1713,7 +1713,7 @@ quick.reg = function(my.model,
       }
       if(show.latent & !show.y.contrasts){
         for(i in 1:my.y.levels){
-          my.manova.table[my.line.var,]=c(paste(i,"|Residuals",sep=""),NA,NA,my.latent.SSP.err[i,i],the.resid.df,NA,NA,NA)
+          my.manova.table[my.line.var,]=c(paste(ifelse(real.names,rownames(my.SSP.total)[i],i),"|Residual",sep=""),NA,NA,my.latent.SSP.err[i,i],the.resid.df,NA,NA,NA)
           my.line.var=my.line.var+1
         }
       }
