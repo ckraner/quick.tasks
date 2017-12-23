@@ -948,10 +948,12 @@ quick.reg = function(my.model,
       for(q in 2:length(my.SSP.treat.df)){
         if(my.SSP.treat.df[q]>1){
           num.of.contrasts=my.SSP.treat.df[q]
-          if(j==1){
-            my.contrasts.names[[q-1]]=as.list(paste(level.names[[1]],"-",level.names[[j+1]]))
-          }else{
-            my.contrasts.names[[q-1]]=c(my.contrasts.names[[q-1]],paste(level.names[[1]],"-",level.names[[j+1]]))
+          for(j in 1:{my.SSP.treat.df[q]}){
+            if(j==1){
+              my.contrasts.names[[q-1]]=as.list(paste(level.names[[1]],"-",level.names[[j+1]]))
+            }else{
+              my.contrasts.names[[q-1]]=c(my.contrasts.names[[q-1]],paste(level.names[[1]],"-",level.names[[j+1]]))
+            }
           }
         }
       }
@@ -1052,7 +1054,7 @@ quick.reg = function(my.model,
                                              }
                                              return(my.SSP.treat.fa.values[[i]])
                                            }
-                                           )
+      )
 
       for(j in 2:length(my.SSP.treat.fa.values[[i]])){
         my.SSP.treat.fa.values[[i]]=cbind(my.SSP.treat.fa.values[[i]],my.SSP.treat.fa.values[[i]])
