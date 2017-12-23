@@ -948,12 +948,11 @@ quick.reg = function(my.model,
       for(q in 2:length(my.SSP.treat.df)){
         if(my.SSP.treat.df[q]>1){
           num.of.contrasts=my.SSP.treat.df[q]
-          for(j in 1:{my.SSP.treat.df[q]})
-            if(j==1){
-              my.contrasts.names[[q-1]]=as.list(paste(level.names[[1]],"-",level.names[[j+1]]))
-            }else{
-              my.contrasts.names[[q-1]]=c(my.contrasts.names[[q-1]],paste(level.names[[1]],"-",level.names[[j+1]]))
-            }
+          if(j==1){
+            my.contrasts.names[[q-1]]=as.list(paste(level.names[[1]],"-",level.names[[j+1]]))
+          }else{
+            my.contrasts.names[[q-1]]=c(my.contrasts.names[[q-1]],paste(level.names[[1]],"-",level.names[[j+1]]))
+          }
         }
       }
 
@@ -1042,17 +1041,18 @@ quick.reg = function(my.model,
       my.SSP.treat.fa.eigen[[i]]=eigen(my.SSP.treat[[i]])
 
 
-      my.SSP.treat.fa.values[[i]]=tryCatch(as.matrix({1/sqrt(my.SSP.treat.fa.eigen[[i]]$values)}),warning=function(w){
-        my.SSP.treat.fa.values[[i]]=matrix(ncol=1,nrow=length(my.SSP.treat.fa.eigen[[i]]$values))
-        for(j in 1:length(my.SSP.treat.fa.eigen[[i]]$values)){
-          my.SSP.treat.fa.values[[i]][j]={1/sqrt(max(my.SSP.treat.fa.eigen[[i]]$values[j],0))}
-          if(my.SSP.treat.fa.values[[i]][j]==Inf){
-            my.SSP.treat.fa.values[[i]][j]=0
-          }
-        }
-        return(my.SSP.treat.fa.values[[i]])
-      })
-
+      my.SSP.treat.fa.values[[i]]=tryCatch(as.matrix({1/sqrt(my.SSP.treat.fa.eigen[[i]]$values)}),
+                                           warning=function(w){
+                                             my.SSP.treat.fa.values[[i]]=matrix(ncol=1,nrow=length(my.SSP.treat.fa.eigen[[i]]$values))
+                                             for(j in 1:length(my.SSP.treat.fa.eigen[[i]]$values)){
+                                               my.SSP.treat.fa.values[[i]][j]={1/sqrt(max(my.SSP.treat.fa.eigen[[i]]$values[j],0))}
+                                               if(my.SSP.treat.fa.values[[i]][j]==Inf){
+                                                 my.SSP.treat.fa.values[[i]][j]=0
+                                               }
+                                             }
+                                             return(my.SSP.treat.fa.values[[i]])
+                                           }
+                                           )
 
       for(j in 2:length(my.SSP.treat.fa.values[[i]])){
         my.SSP.treat.fa.values[[i]]=cbind(my.SSP.treat.fa.values[[i]],my.SSP.treat.fa.values[[i]])
@@ -1079,8 +1079,6 @@ quick.reg = function(my.model,
       my.SSP.treat.total=my.SSP.treat.total+my.SSP.treat[[i]]
     }
     my.SSP.total=my.SSP.treat.total+my.SSP.err
-
-    my.y.levels=dim(my.SSP.total)[1]
 
 
 
@@ -1293,7 +1291,7 @@ quick.reg = function(my.model,
           my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,NA,my.resid.df,my.p.val)
           my.line.var=my.line.var+1
 
-          #### Put in contrasts ####
+          #### Put in latent contrasts ####
           if(show.contrasts){
             #### Check length
             if({my.SSP.treat.df[i]>1}){
@@ -1331,7 +1329,7 @@ quick.reg = function(my.model,
         my.manova.table[my.line.var,]=c("Treatment",my.test.stat,my.f.val,my.SS,{my.df/my.y.levels},my.df,my.resid.df,my.p.val)
         my.line.var=my.line.var+1
 
-        #### Y Contrasts ####
+        #### Treatment Y Contrasts ####
         if(show.y.contrasts){
           for(b in 1:my.y.levels){
             my.test.stat=NA
@@ -1346,7 +1344,7 @@ quick.reg = function(my.model,
             my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,{my.df/my.y.levels},NA,{my.resid.df/my.y.levels},my.p.val)
             my.line.var=my.line.var+1
 
-            #### Show latents ####
+            #### Treatment Latents ####
             if(show.latent){
               #### Show latent treatments (ANOVAs)
               #### Need to change latents to type II
