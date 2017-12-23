@@ -1016,6 +1016,9 @@ quick.reg = function(my.model,
 
       }
 
+      #### Get residual stuff
+      the.resid.SS=sum(diag(my.SSP.err))
+      the.resid.df=my.model$df.residual
 
       #### Make SSCPs  of full matrix####
       #### Get SSP treatment and error
@@ -1036,6 +1039,16 @@ quick.reg = function(my.model,
 
       #### Mean Square Error
       my.MSE=mean(my.model$residuals^2)
+
+      #### Latent Mean Square Error
+      my.latent.MSE=NULL
+      for(i in 1:{my.y.levels}){
+        if(i==1){
+          my.latent.MSE=as.numeric(mean(my.model$residuals[i]^2))
+        }else{
+          my.latent.MSE=c(my.latent.MSE,as.numeric(mean(my.model$residuals[i]^2)))
+        }
+      }
 
       #### Get mean responses for variables longer than 2
       #### WARN! LEVEL NAMES IS GOING TO BREAK IT!!!! ####
@@ -1085,6 +1098,7 @@ quick.reg = function(my.model,
 
       #### Compute F values
       my.contrasts.F=NULL
+      my.latent.contrasts.F=NULL
       for(q in 2:length(my.SSP.treat.df)){
         if(my.SSP.treat.df[q]>1){
           num.of.contrasts=my.SSP.treat.df[q]
@@ -1095,34 +1109,64 @@ quick.reg = function(my.model,
             if(j==1){
               my.contrasts.I=as.integer(t(as.matrix(my.count.means[[q-1]])))%*%as.integer(as.matrix(my.contrasts[[q-1]][j,]))
               my.contrasts.denom=sum(my.contrasts[[q-1]][j,]^2/as.integer(my.count.n[[q-1]]))
-              my.contrasts.F[[q-1]]=as.list({my.contrasts.I^2}/{my.MSE*my.contrasts.denom})
+              my.contrasts.F[[q-1]]=as.list({my.contrasts.I^2}/{my.latent.MSE[j]*my.contrasts.denom})
+              for(l in 1:{my.y.levels}){
+                if(l==1){
+              my.latent.contrasts.F[[q-1]]=as.list({my.contrasts.I^2}/{my.latent.MSE[l]*my.contrasts.denom})
+                }else{
+                  my.latent.contrasts.F[[q-1]]=c(my.latent.contrasts.F[[q-1]],{my.contrasts.I^2}/{my.latent.MSE[l]*my.contrasts.denom})
+                }
+              }
             }else{
               my.contrasts.I=as.integer(t(as.matrix(my.count.means[[q-1]])))%*%as.integer(as.matrix(my.contrasts[[q-1]][j,]))
               my.contrasts.denom=sum(my.contrasts[[q-1]][j,]^2/as.integer(my.count.n[[q-1]]))
               #my.contrasts.F[[q-1]]={my.contrasts.I^2}/{my.MSE*my.contrasts.denom}
               my.contrasts.F[[q-1]]=c(my.contrasts.F[[q-1]],{my.contrasts.I^2}/{my.MSE*my.contrasts.denom})
+              for(l in 1:{my.y.levels}){
+                  my.latent.contrasts.F[[q-1]]=c(my.latent.contrasts.F[[q-1]],{my.contrasts.I^2}/{my.latent.MSE[l]*my.contrasts.denom})
+              }
+              #my.latent.contrasts.F[[q-1]]=c(my.latent.contrasts.F[[q-1]],{my.contrasts.I^2}/{my.latent.MSE*my.contrasts.denom})
             }
 
         }
       }
 
       #### Compute SS from F values
+      #### NEED TO FIX ####
+      #### change to partial resid.SS
+
       my.contrasts.SS=NULL
+      my.latent.contrasts.SS=NULL
       for(q in 2:length(my.SSP.treat.df)){
         if(my.SSP.treat.df[q]>1){
           num.of.contrasts=my.SSP.treat.df[q]
           #level.names=levels(my.new.df[[q]])
 
 
-          for(j in 1:{my.SSP.treat.df[q]})
+          for(j in 1:{my.SSP.treat.df[q]}){
             if(j==1){
 
-              my.contrasts.SS[[q-1]]=as.list({as.numeric(my.contrasts.F[[q-1]][j])*{the.resid.SS-my.y.levels+1}*my.y.levels}/the.resid.df)
-            }else{
+              my.contrasts.SS[[q-1]]=as.list({as.numeric(my.contrasts.F[[q-1]][j])*{the.resid.SS}*my.y.levels}/{the.resid.df})
+              for(l in 1:{my.y.levels}){
+                if(l==1){
+                  my.latent.contrasts.SS[[q-1]]=as.list({as.numeric(my.latent.contrasts.F[[q-1]][1])*{my.SSP.err[q-1,q-1]}*1}/{the.resid.df-my.y.levels+1})
+                }else{
+                  my.latent.contrasts.SS[[q-1]]=c(my.latent.contrasts.SS[[q-1]],{as.numeric(my.latent.contrasts.F[[q-1]][my.y.levels*l-1])*{my.SSP.err[q-1,q-1]}*1}/{the.resid.df-my.y.levels+1})
+                }
+}
+              }else{
 
-              my.contrasts.SS[[q-1]]=c(my.contrasts.SS[[q-1]],{as.numeric(my.contrasts.F[[q-1]][j])*{the.resid.SS-my.y.levels+1}*my.y.levels}/the.resid.df)
-            }
+              my.contrasts.SS[[q-1]]=c(my.contrasts.SS[[q-1]],{as.numeric(my.contrasts.F[[q-1]][j])*{the.resid.SS}*my.y.levels}/{the.resid.df})
+              for(l in 1:{my.y.levels}){
+                if(l==1){
+                  my.latent.contrasts.SS[[q-1]]=c(my.latent.contrasts.SS[[q-1]],{as.numeric(my.latent.contrasts.F[[q-1]][j])*{my.SSP.err[q-1,q-1]}*1}/{the.resid.df-my.y.levels+1})
+                }else{
+                  my.latent.contrasts.SS[[q-1]]=c(my.latent.contrasts.SS[[q-1]],{as.numeric(my.latent.contrasts.F[[q-1]][my.y.levels*j-1])*{my.SSP.err[q-1,q-1]}*1}/{the.resid.df-my.y.levels+1})
+                }
+              }
 
+        }
+          }
         }
       }
 
@@ -1147,6 +1191,8 @@ quick.reg = function(my.model,
       }
 
       #### Make table
+      #### NEED TO ADD PVAL SO CAN ADJUST ####
+      #### p.adjust works on set of p-vals!
       my.contrasts.table=NULL
       for(q in 2:length(my.SSP.treat.df)){
         if(my.SSP.treat.df[q]>1){
@@ -1158,6 +1204,72 @@ quick.reg = function(my.model,
 
         }
       }
+
+      #### Latent tables
+      my.latent.contrasts.F.R=NULL
+      my.latent.contrasts.SS.R=NULL
+      for(q in 2:length(my.SSP.treat.df)){
+        if(my.SSP.treat.df[q]>1){
+          if(q==2){
+            the.latent.levels=1
+            num.of.contrasts=my.SSP.treat.df[q]
+            for(s in 2:my.SSP.treat.df[q]){
+              the.latent.levels=c(the.latent.levels,my.y.levels*s-1)}
+            my.latent.contrasts.F.R[[q-1]]=as.list(my.latent.contrasts.F[[q-1]][[1]])
+            my.latent.contrasts.SS.R[[q-1]]=as.list(my.latent.contrasts.SS[[q-1]][[1]])
+            for(r in 2:length(the.latent.levels)){
+              my.latent.contrasts.F.R[[q-1]]=c(my.latent.contrasts.F.R[[q-1]],my.latent.contrasts.F[[q-1]][[the.latent.levels[r]]])
+              my.latent.contrasts.SS.R[[q-1]]=c(my.latent.contrasts.SS.R[[q-1]],my.latent.contrasts.SS[[q-1]][[the.latent.levels[r]]])
+            }
+            for(v in 2:my.y.levels){
+
+
+            the.latent.levels=NULL
+            #the.latent.levels=q-1
+            for(s in 1:my.SSP.treat.df[q]){
+              the.latent.levels=c(the.latent.levels,my.y.levels*s)}
+            for(r in 1:length(the.latent.levels)){
+              my.latent.contrasts.F.R[[q-1]]=c(my.latent.contrasts.F.R[[q-1]],my.latent.contrasts.F[[q-1]][[the.latent.levels[r]]])
+              my.latent.contrasts.SS.R[[q-1]]=c(my.latent.contrasts.SS.R[[q-1]],my.latent.contrasts.SS[[q-1]][[the.latent.levels[r]]])
+            }
+            }
+          }else{
+
+            for(v in 1:my.y.levels){
+              the.latent.levels=NULL
+              #the.latent.levels=q-1
+              for(s in 1:my.SSP.treat.df[q]){
+                the.latent.levels=c(the.latent.levels,my.y.levels*s)}
+              for(r in 1:length(the.latent.levels)){
+                my.latent.contrasts.F.R[[q-1]]=c(my.latent.contrasts.F.R[[q-1]],my.latent.contrasts.F[[q-1]][[the.latent.levels[r]]])
+                my.latent.contrasts.SS.R[[q-1]]=c(my.latent.contrasts.SS.R[[q-1]],my.latent.contrasts.SS[[q-1]][[the.latent.levels[r]]])
+              }
+            }
+            # the.latent.levels=NULL
+            # #the.latent.levels=q-1
+            # for(s in 1:num.of.contrasts){
+            #   the.latent.levels=c(the.latent.levels,my.y.levels*s)}
+            # for(r in 1:length(the.latent.levels)){
+            #   my.latent.contrasts.F.R[[q-1]]=c(my.latent.contrasts.F.R[[q-1]],my.latent.contrasts.F[[q-1]][[the.latent.levels[r]]])
+            # }
+          }
+        }
+      }
+      my.latent.contrasts.table=NULL
+      for(q in 2:length(my.SSP.treat.df)){
+        num.of.contrasts=my.SSP.treat.df[q]
+        if(my.SSP.treat.df[q]>1){
+          for(g in 1:my.y.levels){
+          my.latent.contrasts.table[[q-1]][[g]]=cbind(my.contrasts.names[[1]],my.latent.contrasts.F.R[[q-1]][{g+ifelse(g>1,{g-1}*my.SSP.treat.df[q]-1,0)}:{g*my.SSP.treat.df[q]}],my.latent.contrasts.SS.R[[q-1]][{g+ifelse(g>1,{g-1}*my.SSP.treat.df[q]-1,0)}:{g*my.SSP.treat.df[q]}])
+          }
+          #my.latent.contrast.table[[q-1]]=cbind(my.contrasts.names[[1]],my.latent.contrasts.F[[q-1]][,the.latent.levels])
+        }
+      }
+
+
+
+
+
       #### LATENT MODEL ####
       #### Make latent variables (~equivalent to ANOVAs) of Full matrix
       my.SSP.total.fa.eigen=eigen(my.SSP.total)
@@ -1286,9 +1398,7 @@ quick.reg = function(my.model,
       my.latent.SSP.treat.change.total=quick.tr(my.latent.SSP.treat.change)
 
 
-      #### Get residual stuff
-      the.resid.SS=sum(diag(my.SSP.err))
-      the.resid.df=my.model$df.residual
+
 
       #### Get total change stuff
       my.total.change=my.SSP.err+my.SSP.treat.change
@@ -1398,12 +1508,36 @@ quick.reg = function(my.model,
                 my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.f.val,my.SS,my.df,NA,my.resid.df,my.p.val)
                 my.line.var=my.line.var+1
             }
+            #### Put in contrasts
+            if(show.contrasts & i!=1){
+              #### Check length
+              if({my.SSP.treat.df[i]>1}){
+                other.manova.grep=grep(paste("^",names(my.SSP.treat)[i],"$",sep=""),names(my.model$xlevels))
+                #my.phia=phia::testInteractions(my.model,pairwise = names(my.model$xlevels)[[other.manova.grep]],adjustment = adjustment)
+
+                for(k in 1:{my.SSP.treat.df[i]}){
+                  my.name=my.contrasts.table[[other.manova.grep]][k,1]
+                  my.f.val=my.latent.contrasts.table[[other.manova.grep]][[y]][k,2]
+                  my.SS=my.latent.contrasts.table[[other.manova.grep]][[y]][k,3]
+                  my.test.stat=NA
+
+                  my.df=1
+                  my.mult.df=NA
+
+                  my.resid.df=the.resid.df-my.y.levels+1
+                  #my.p.val=pf(as.numeric(my.f.val),as.numeric(my.mult.df),as.numeric(my.resid.df),lower.tail = F)
+                  my.p.val=NA
+                  my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,my.mult.df,my.resid.df,p.adjust(my.p.val,adjustment))
+                  my.line.var=my.line.var+1
+                }
+              }
+            }
 
           }
         }
 
         #### Put in contrasts
-        if(show.contrasts){
+        if(show.contrasts & !show.latent){
           #### Check length
           if({my.SSP.treat.df[i]>1}){
             other.manova.grep=grep(paste("^",names(my.SSP.treat)[i],"$",sep=""),names(my.model$xlevels))
@@ -1420,7 +1554,8 @@ quick.reg = function(my.model,
 
               my.resid.df=the.resid.df-my.y.levels+1
               my.p.val=pf(as.numeric(my.f.val),as.numeric(my.mult.df),as.numeric(my.resid.df),lower.tail = F)
-              my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,my.mult.df,my.resid.df,my.p.val)
+              #my.p.val=NA
+              my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,my.mult.df,my.resid.df,p.adjust(my.p.val,adjustment))
               my.line.var=my.line.var+1
             }
           }
@@ -1457,6 +1592,31 @@ quick.reg = function(my.model,
 
             my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,NA,my.resid.df,my.p.val)
             my.line.var=my.line.var+1
+
+            #### Put in contrasts
+            if(show.contrasts){
+              #### Check length
+              if({my.SSP.treat.df[i]>1}){
+                other.manova.grep=grep(paste("^",names(my.SSP.treat)[i],"$",sep=""),names(my.model$xlevels))
+                #my.phia=phia::testInteractions(my.model,pairwise = names(my.model$xlevels)[[other.manova.grep]],adjustment = adjustment)
+
+                for(k in 1:{my.SSP.treat.df[i]}){
+                  my.name=my.contrasts.table[[other.manova.grep]][k,1]
+                  my.f.val=my.latent.contrasts.table[[other.manova.grep]][[y]][k,2]
+                  my.SS=my.latent.contrasts.table[[other.manova.grep]][[y]][k,3]
+                  my.test.stat=NA
+
+                  my.df=1
+                  my.mult.df=NA
+
+                  my.resid.df=the.resid.df-my.y.levels+1
+                  #my.p.val=pf(as.numeric(my.f.val),as.numeric(my.mult.df),as.numeric(my.resid.df),lower.tail = F)
+                  my.p.val=NA
+                  my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,my.mult.df,my.resid.df,p.adjust(my.p.val,adjustment))
+                  my.line.var=my.line.var+1
+                }
+              }
+            }
           }
         }
         #### Put in treatment
