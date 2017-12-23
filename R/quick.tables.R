@@ -1228,14 +1228,14 @@ quick.reg = function(my.model,
           }
 
           #### Put in latent contrasts ####
-          if(show.contrasts & i!=1){
+          if(show.contrasts & show.latent & i!=1){
             #### Check length
             if({my.SSP.treat.df[i]>1}){
               other.manova.grep=grep(paste("^",names(my.SSP.treat)[i],"$",sep=""),names(my.model$xlevels))
               for(k in 1:{my.SSP.treat.df[i]}){
                 my.name=my.contrasts.table[[other.manova.grep]][k,1]
-                my.f.val=my.latent.contrasts.table[[other.manova.grep]][[y]][k,2]
-                my.SS=my.latent.contrasts.table[[other.manova.grep]][[y]][k,3]
+                my.f.val=my.latent.contrasts.table[[other.manova.grep]][[i-1]][k,2]
+                my.SS=my.latent.contrasts.table[[other.manova.grep]][[i-1]][k,3]
                 my.test.stat=NA
                 my.df=1
                 my.mult.df=NA
@@ -1247,11 +1247,33 @@ quick.reg = function(my.model,
               }
             }
           }
+
+          #### Put in contrasts ####
+          #### Not right. Don't have it decomposed this way.
+          if(show.contrasts & !show.latent & F){
+            #### Check length
+            if({my.SSP.treat.df[i]>1}){
+              other.manova.grep=grep(paste("^",names(my.SSP.treat)[i],"$",sep=""),names(my.model$xlevels))
+              for(k in 1:{my.SSP.treat.df[i]}){
+                my.name=my.contrasts.table[[other.manova.grep]][k,1]
+                my.f.val=my.contrasts.table[[other.manova.grep]][k,2]
+                my.SS=my.contrasts.table[[other.manova.grep]][k,3]
+                my.test.stat=NA
+                my.df=NA
+                my.mult.df=my.y.levels
+                my.resid.df=the.resid.df-my.y.levels+1
+                my.p.val=pf(as.numeric(my.f.val),as.numeric(my.mult.df),as.numeric(my.resid.df),lower.tail = F)
+
+                my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,my.mult.df,my.resid.df,p.adjust(my.p.val,adjustment))
+                my.line.var=my.line.var+1
+              }
+            }
+          }
         }
       }
 
       #### Put in contrasts ####
-      if(show.contrasts & !show.latent){
+      if(show.contrasts & !show.latent & !show.y.contrasts){
         #### Check length
         if({my.SSP.treat.df[i]>1}){
           other.manova.grep=grep(paste("^",names(my.SSP.treat)[i],"$",sep=""),names(my.model$xlevels))
@@ -1294,7 +1316,7 @@ quick.reg = function(my.model,
           my.line.var=my.line.var+1
 
           #### Put in latent contrasts ####
-          if(show.contrasts){
+          if(show.contrasts & !{show.contrasts & show.latent}){
             #### Check length
             if({my.SSP.treat.df[i]>1}){
               other.manova.grep=grep(paste("^",names(my.SSP.treat)[i],"$",sep=""),names(my.model$xlevels))
