@@ -2,7 +2,7 @@ Package: quick.tasks
 Type: Package
 Title: Quick implementation of tables, figures, and other helper functions for quick analysis.
 Version: 0.1.0
-Authors@R: person("Kraner","Christopher",email="ckraner19@gmail.com",role=c("aut","cre"))
+Authors@R: person("Christopher","Kraner",email="ckraner19@gmail.com",role=c("aut","cre"))
 Description: Includes basic visualization implementations for tables from regression analyses. 
     Using PixieDust, LaTeX or HTML tables are output. Multiple summaries and results are included
     in tables to more reflect what an analyst would need. Several extended options for tables are 
