@@ -597,6 +597,7 @@ quick.reg = function(my.model,
   library(tidyr)
   library(phia)
   library(quick.tasks)
+  library(dplyr)
 
   #### Find type ####
   my.reg.type=quick.type(my.model)
@@ -682,55 +683,37 @@ quick.reg = function(my.model,
     #### Since it is now lapply, can make it parallel easily later
     attach(my.new.df)
     my.null.model=manova(my.formula.lists[[1]])
+    my.null.model.SSCP=c(car::Anova(my.null.model,type=3)$SSP,car::Anova(my.null.model,type=3)$SSPE)
     my.pre.models=lapply(my.formula.lists[[2]],manova)
+    my.pre.models.SSCP=lapply(my.pre.models,quick.SSCP)
     my.full.models=lapply(my.formula.lists[[3]],manova)
+    my.full.models.SSCP=lapply(my.full.models,quick.SSCP)
     detach(my.new.df)
 
 
     #### Make nested data frame ####
     ## variable (str) | formula (str) | model
     my.nested.table=NULL
-    my.nested.table=list("null",my.formula.lists[[1]],my.null.model)
+    my.nested.table=list("null",my.formula.lists[[1]],my.null.model,my.null.model.SSCP,NA,NA,NA)
 
-    my.nested.table=rbind(my.nested.table,list("FIRSTCHD_F",my.formula.lists[[2]][[1]],my.pre.models[[1]]))
+    model.names=names(my.model$model)[-1]
 
-    my.new.model=NULL
-    my.new.model[[1]]=my.null.model
+    for(v in 1:length(model.names)){
+    my.nested.table=rbind(my.nested.table,list(model.names[v],my.formula.lists[[2]][[v]],
+                                               my.pre.models[[v]],my.pre.models.SSCP[[v]],
+                                               {my.null.model$df.residual-my.pre.models[[v]]$df.residual},
+                                               NA,NA))
+    my.nested.table=rbind(my.nested.table,list(model.names[v],my.formula.lists[[3]][[v]],
+                                               my.full.models[[v]],my.full.models.SSCP[[v]],
+                                               {my.null.model$df.residual-my.full.models[[v]]$df.residual},
+                                               my.full.models.SSCP[[v]][[1]][{length(my.full.models.SSCP[[v]][[1]])}],
+                                               {my.null.model$df.residual-my.full.models[[v]]$df.residual}-{my.null.model$df.residual-my.pre.models[[v]]$df.residual}))
 
-
-    #### Type I & II Dataframes ####
-    j=dim(my.new.df)[2]
-    line=2
-    for(i in 2:{dim(my.new.df)[2]}){
-      j=i
-      my.rh=1
-      k=1
-      while(k <{dim(my.new.df)[2]}){
-        if(j>{dim(my.new.df)[2]}){
-          my.j=abs(j-dim(my.new.df)[2])+1
-        }else{
-          my.j=j
-        }
-        my.rh=paste(my.rh,"+",names(my.new.df)[my.j])
-        my.new.model[[line]]=manova(eval(parse(text=paste("my.new.df[[1]]~",my.rh))),data=my.new.df)
-
-        j=j+1
-        line=line+1
-        k=k+1
-      }
     }
-    my.SS.type.1=NULL
-    my.SS.type.1.change=NULL
 
+    colnames(my.nested.table)=c("Variable","Formula","Model","SSCP","df","Change","df Change")
 
-    #### Type I SS
-    #### Also treatment change
-    #1+n
-    my.SS.type.1.dfs=NULL
-    the.var.length=dim(my.new.df)[2]
-    for(i in 1:the.var.length){
-      my.SS.type.1.dfs[[i]]=my.new.model[[i]]
-    }
+    latent.sscp=lapply(my.nested.table[-1,4],quick.latent)
 
 
     #### Null change
@@ -1144,8 +1127,8 @@ quick.reg = function(my.model,
     }
     my.SSP.treat.change.df=sum(my.SSP.treat.df[-1])*my.y.levels
     my.latent.SSP.treat.change.df=my.SSP.treat.change.df/my.y.levels
-    my.SSP.treat.change.total=quick.tr(my.SSP.treat.change)
-    my.latent.SSP.treat.change.total=quick.tr(my.latent.SSP.treat.change)
+    my.SSP.treat.change.total=sum(diag(my.SSP.treat.change))
+    my.latent.SSP.treat.change.total=sum(diag(my.latent.SSP.treat.change))
 
 
 

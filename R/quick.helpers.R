@@ -98,7 +98,58 @@ quick.formula=function(my.model,my.envir){
 }
 
 
+#' Create latent variables
+#'
+#' Helper function to make list of null model, pre models,
+#' and full models for calculating type II SS (and eventually
+#' type III SS).
+#'
+#' @param SSCP.list Model to be used
+#' @return List of lists with 3 pieces: null model, pre models, and full models
+#' @keywords Explore
+quick.latent=function(SSCP.list){
+  temp.latent.SSCP.eigen=map(SSCP.list[[1]],quick.latent.reduce)
+  temp.latent.SSCP.error=quick.latent.reduce(SSCP.list[[2]])
+  temp.latent=list(temp.latent.SSCP.eigen,temp.latent.SSCP.error)
+  return(temp.latent)
+}
 
+
+
+
+#' Create latent variables
+#'
+#' Helper function to make list of null model, pre models,
+#' and full models for calculating type II SS (and eventually
+#' type III SS).
+#'
+#' @param my.part Model to be used
+#' @return List of lists with 3 pieces: null model, pre models, and full models
+#' @keywords Explore
+quick.latent.reduce=function(my.part){
+  temp.latent.SSCP.eigen=eigen(my.part)
+  temp.latent.SSCP.values=as.matrix(temp.latent.SSCP.eigen$values)
+  temp.latent=temp.latent.SSCP.eigen$vectors%*%temp.latent.SSCP.values
+  return(temp.latent)
+}
+
+
+
+#' Put together SS from car::Anova package
+#'
+#' Helper function to make list of null model, pre models,
+#' and full models for calculating type II SS (and eventually
+#' type III SS).
+#'
+#' @param my.model Model to be used
+#' @return List of lists with 3 pieces: null model, pre models, and full models
+#' @keywords Explore
+quick.SSCP=function(my.summary){
+  library(car)
+  car.sum=car::Anova(my.summary,type=3)
+  car.sum.SSCP=list(car.sum$SSP,car.sum$SSPE)
+  return(car.sum.SSCP)
+}
 
 #' Formula Dissecter for later...does ALL types.
 #'
