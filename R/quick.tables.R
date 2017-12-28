@@ -4,6 +4,165 @@
 ######################## 12/2017 ###########################
 ############################################################
 
+#' Partial contrasts for ANOVA and MANOVA tables
+#'
+#' Adds Contrasts and Latent Contrasts to nested table
+#' for creating overall MANOVA and ANOVA tables.
+#'
+#' @param my.nested.table Model.
+#' @param SS.type Type of sums of squares to report, either 2 or 3. (default = 3)
+#' @param adjustment P-value adjustment sent to p.adjust (default = "bonferroni")
+#' @param abbrev.length Integer telling how long of a label is too long. Longer than this and will be condensed (default=15)
+#' @return Nested table with added rows and information (Unfortunately as character at the moment)
+#' @keywords Explore
+#' @examples
+#' quick.contrast(my.nested.table)
+quick.part.cont=function(my.nested.table,SS.type=2,adjustment="bonferroni",abbrev.length=30,latent.cont=F){
+  #### Get y levels
+  my.y.levels=dim(my.nested.table[1,4][[1]][[1]])[1]
+
+  #### Put in NA rows
+  temp.colnames=colnames(my.nested.table)
+  my.nested.table2=cbind(my.nested.table,as.matrix(c(rep(NA,dim(my.nested.table)[1]))))
+  if(latent.cont){
+    my.nested.table2=cbind(my.nested.table2,as.matrix(c(rep(NA,dim(my.nested.table)[1]))))
+    colnames(my.nested.table2)=c(temp.colnames,"Contrasts","Latent Contrasts")
+  }else{
+    colnames(my.nested.table2)=c(temp.colnames,"Contrasts")
+  }
+  #### For each row besides the null model
+  for(p in 2:dim(my.nested.table)[1]){
+    #### Check if should have contrast
+    if(!is.na(my.nested.table[p,7][[1]]) & my.nested.table[p,7][[1]]>1){
+      #### If should, make contrast
+      my.new.df=my.nested.table[p,3][[1]]$model
+      my.MSE=mean(my.nested.table[p,3][[1]]$residuals^2)
+      the.resid.SS=sum(diag(my.nested.table[p,4][[1]][[2]]))
+      the.resid.df=my.nested.table[p,3][[1]]$df.residual
+
+      if(latent.cont){
+        #### Latent Mean Square Error
+        my.latent.MSE=NULL
+        for(j in 1:my.y.levels){
+          if(i==1){
+            my.latent.MSE=as.numeric(mean(my.contrast.model$residuals[i]^2))
+          }else{
+            my.latent.MSE=c(my.latent.MSE,as.numeric(mean(my.contrast.model$residuals[i]^2)))
+          }
+        }
+      }
+
+      #### Get mean responses for variables longer than 2
+      #### WARN! LEVEL NAMES IS GOING TO BREAK IT!!!! ####
+      level.name.grep=grep(my.nested.table[p,1],names(my.nested.table[p,3][[1]]$xlevels))
+      level.names=as.vector(my.nested.table[p,3][[1]]$xlevels[[level.name.grep]])
+      num.of.contrasts=my.nested.table[p,7][[1]]
+
+      count.grep=grep(my.nested.table[p,1],names(my.new.df))
+      my.count.means=NULL
+      my.latent.count.means=NULL
+      my.count.n=NULL
+      for(j in 1:{num.of.contrasts+1}){
+        if(j==1){
+          my.count.means=as.vector(mean(my.new.df[which(my.new.df[[count.grep]]==level.names[j]),1]))
+          my.count.n=as.vector(dim(my.new.df[which(my.new.df[[count.grep]]==level.names[j]),1])[1])
+          if(latent.cont){
+            for(E in 1:{my.y.levels}){
+              my.latent.count.means[[E]]=as.list(mean(my.new.df[which(my.new.df[[count.grep]]==level.names[j]),1][,E]))
+            }
+          }
+        }else{
+          my.count.means=c(my.count.means,mean(my.new.df[which(my.new.df[[count.grep]]==level.names[j]),1]))
+          my.count.n=c(my.count.n,dim(my.new.df[which(my.new.df[[count.grep]]==level.names[j]),1])[1])
+          if(latent.cont){
+            for(E in 1:{my.y.levels}){
+              my.latent.count.means[[E]]=c(my.latent.count.means[[E]],mean(my.new.df[which(my.new.df[[count.grep]]==level.names[j]),1][,E]))
+            }
+          }
+        }
+      }
+
+
+      #### Make contrasts
+      my.contrasts=NULL
+      for(j in 1:{num.of.contrasts}){
+        if(j==1){
+          my.contrasts=c(1,-1,rep(0,num.of.contrasts-1))
+        }else{
+          my.contrasts=rbind(my.contrasts,c(1,rep(0,j-1),-1,rep(0,num.of.contrasts-j)))
+        }
+      }
+
+
+      #### Compute F values & SS
+      my.contrasts.F=NULL
+      my.contrasts.SSC=NULL
+      if(latent.cont){
+        my.latent.contrasts.F=NULL
+        my.latent.contrasts.SSC=NULL
+      }
+      for(j in 1:{num.of.contrasts}){
+        if(j==1){
+          my.contrasts.I=as.integer(t(as.matrix(my.count.means)))%*%as.integer(as.matrix(my.contrasts[j,]))
+          my.contrasts.denom=sum(my.contrasts[j,]^2/as.integer(my.count.n))
+          my.contrasts.SSC=as.list({my.contrasts.I^2}/{my.contrasts.denom})
+          my.contrasts.F=as.list({my.contrasts.I^2}/{my.MSE*my.contrasts.denom})
+          if(latent.cont){
+            for(l in 1:{my.y.levels}){
+              my.latent.contrasts.I=as.integer(t(as.matrix(my.latent.count.means[[l]])))%*%as.integer(as.matrix(my.contrasts[j,]))
+              my.latent.contrasts.SSC[[l]]=as.list({my.latent.contrasts.I^2}/{my.contrasts.denom})
+              my.latent.contrasts.F[[l]]=as.list({my.latent.contrasts.I^2}/{my.latent.MSE[l]*my.contrasts.denom})
+            }
+          }
+        }else{
+          my.contrasts.I=as.integer(t(as.matrix(my.count.means)))%*%as.integer(as.matrix(my.contrasts[j,]))
+          my.contrasts.denom=sum(my.contrasts[j,]^2/as.integer(my.count.n))
+          my.contrasts.SSC=c(my.contrasts.SSC,{my.contrasts.I^2}/{my.contrasts.denom})
+          my.contrasts.F=c(my.contrasts.F,{my.contrasts.I^2}/{my.MSE*my.contrasts.denom})
+          if(latent.cont){
+            for(l in 1:{my.y.levels}){
+              my.latent.contrasts.I=as.integer(t(as.matrix(my.latent.count.means[[l]])))%*%as.integer(as.matrix(my.contrasts[j,]))
+              my.latent.contrasts.SSC[[l]]=c(my.latent.contrasts.SSC[[l]],{my.latent.contrasts.I^2}/{my.contrasts.denom})
+              my.latent.contrasts.F[[l]]=c(my.latent.contrasts.F[[l]],{my.latent.contrasts.I^2}/{my.latent.MSE[l]*my.contrasts.denom})
+            }
+          }
+        }
+      }
+
+
+      #### Make rownames
+      my.contrasts.names=NULL
+      for(j in 1:{num.of.contrasts}){
+        if(j==1){
+          my.contrasts.names=as.list(abbreviate(paste(trimws(level.names[[1]]),"-",trimws(level.names[[j+1]]))),abbrev.length)
+        }else{
+          my.contrasts.names=c(my.contrasts.names,abbreviate(paste(trimws(level.names[[1]]),"-",trimws(level.names[[j+1]]))),abbrev.length)
+        }
+      }
+
+
+      #### Add to table
+      my.contrasts.4.table=cbind(as.matrix(unlist(my.contrasts.names)),as.numeric(as.matrix(unlist(my.contrasts.F))),as.matrix(as.numeric(unlist(my.contrasts.SSC))))
+      contr.grep=grep("^Contrasts$",colnames(my.nested.table2))
+      my.nested.table2[p,contr.grep]=list(my.contrasts.4.table)
+
+      if(latent.cont){
+        my.latent.contrasts.4.table=NULL
+        for(V in 1:my.y.levels){
+          if(V==1){
+            my.latent.contrasts.4.table=cbind(as.matrix(unlist(my.contrasts.names)),as.numeric(as.matrix(unlist(my.latent.contrasts.F[[V]]))),as.matrix(as.numeric(unlist(my.latent.contrasts.SSC[[V]]))))
+          }else{
+            my.latent.contrasts.4.table=cbind(my.latent.contrasts.4.table,as.matrix(unlist(my.contrasts.names)),as.numeric(as.matrix(unlist(my.latent.contrasts.F[[V]]))),as.matrix(as.numeric(unlist(my.latent.contrasts.SSC[[V]]))))
+          }
+        }
+        latent.contr.grep=grep("^Latent Contrasts$",colnames(my.nested.table2))
+        my.nested.table2[p,latent.contr.grep]=list(my.latent.contrasts.4.table)
+
+      }
+    }
+  }
+  return(my.nested.table2)
+}
 
 #' Contrast Tables in Pixiedust
 #'
