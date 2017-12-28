@@ -699,21 +699,51 @@ quick.reg = function(my.model,
     model.names=names(my.model$model)[-1]
 
     for(v in 1:length(model.names)){
-    my.nested.table=rbind(my.nested.table,list(model.names[v],my.formula.lists[[2]][[v]],
-                                               my.pre.models[[v]],my.pre.models.SSCP[[v]],
-                                               {my.null.model$df.residual-my.pre.models[[v]]$df.residual},
-                                               NA,NA))
-    my.nested.table=rbind(my.nested.table,list(model.names[v],my.formula.lists[[3]][[v]],
-                                               my.full.models[[v]],my.full.models.SSCP[[v]],
-                                               {my.null.model$df.residual-my.full.models[[v]]$df.residual},
-                                               my.full.models.SSCP[[v]][[1]][{length(my.full.models.SSCP[[v]][[1]])}],
-                                               {my.null.model$df.residual-my.full.models[[v]]$df.residual}-{my.null.model$df.residual-my.pre.models[[v]]$df.residual}))
+      my.nested.table=rbind(my.nested.table,list(model.names[v],my.formula.lists[[2]][[v]],
+                                                 my.pre.models[[v]],my.pre.models.SSCP[[v]],
+                                                 {my.null.model$df.residual-my.pre.models[[v]]$df.residual},
+                                                 NA,NA))
+      my.nested.table=rbind(my.nested.table,list(model.names[v],my.formula.lists[[3]][[v]],
+                                                 my.full.models[[v]],my.full.models.SSCP[[v]],
+                                                 {my.null.model$df.residual-my.full.models[[v]]$df.residual},
+                                                 my.full.models.SSCP[[v]][[1]][{length(my.full.models.SSCP[[v]][[1]])}],
+                                                 {my.null.model$df.residual-my.full.models[[v]]$df.residual}-{my.null.model$df.residual-my.pre.models[[v]]$df.residual}))
 
     }
 
     colnames(my.nested.table)=c("Variable","Formula","Model","SSCP","df","Change","df Change")
 
-    latent.sscp=lapply(my.nested.table[-1,4],quick.latent)
+
+    if(show.latent){
+
+      #### Create latent variables ####
+      latent.SSCP=lapply(my.nested.table[-1,4],quick.latent)
+      latent.change=NA
+      for(S in 2:{length(latent.SSCP)+1}){
+        if(S %% 2 == 0){
+          latent.change=c(latent.change,NA)
+        }else{
+          latent.change=c(latent.change,as.list(latent.SSCP[[S-1]][[1]][{length(latent.SSCP[[S-1]][[1]])}]))
+        }
+      }
+
+      #### Add to table ####
+      my.nested.table=cbind(my.nested.table,c(NA,latent.SSCP),latent.change)
+
+      colnames(my.nested.table)=c("Variable","Formula","Model","SSCP","df","Change","df Change","Latent SSCP","Latent Change")
+    }
+
+
+    #### Get treatment
+    treat.model=my.nested.table[dim(my.nested.table)[1],4]
+    treat.total.temp=lapply(lapply(treat.model[[1]][[1]],diag),sum)
+    treat.total=0
+    for(W in 2:length(treat.total.temp)){
+      treat.total=treat.total+treat.total.temp[[W]]
+    }
+
+    treat.total.df=sum(as.numeric(my.nested.table[,7]),na.rm = T)
+
 
 
     #### Null change
