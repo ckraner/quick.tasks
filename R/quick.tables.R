@@ -805,6 +805,8 @@ quick.reg = function(my.model,
     my.dv.rownames=rownames(part.resid.total)
 
     #### Make basic table ####
+
+    #### NEEDS TO BE FIXED ####
     my.table.names=c("var","test.stat","f.val","SS","df","mult.df","resid df","p.val")
 
 
