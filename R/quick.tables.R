@@ -713,10 +713,10 @@ quick.reg = function(my.model,
 
     colnames(my.nested.table)=c("Variable","Formula","Model","SSCP","df","Change","df Change")
 
-
+    #### Create latent variables ####
     if(show.latent){
 
-      #### Create latent variables ####
+
       latent.SSCP=lapply(my.nested.table[-1,4],quick.latent)
       latent.change=NA
       for(S in 2:{length(latent.SSCP)+1}){
@@ -727,454 +727,82 @@ quick.reg = function(my.model,
         }
       }
 
-      #### Add to table ####
+      #### Add to table
       my.nested.table=cbind(my.nested.table,c(NA,latent.SSCP),latent.change)
 
       colnames(my.nested.table)=c("Variable","Formula","Model","SSCP","df","Change","df Change","Latent SSCP","Latent Change")
     }
 
 
-    #### Get treatment
+    #### Get treatment ####
     treat.model=my.nested.table[dim(my.nested.table)[1],4]
+
+    #### Regular totals
     treat.total.temp=lapply(lapply(treat.model[[1]][[1]],diag),sum)
     treat.total=0
     for(W in 2:length(treat.total.temp)){
       treat.total=treat.total+treat.total.temp[[W]]
     }
-
     treat.total.df=sum(as.numeric(my.nested.table[,7]),na.rm = T)
 
 
-
-    #### Null change
-    my.SS.type.1.change[[1]]=summary(my.SS.type.1.dfs[[2]])$SS[[1]]
-    for(z in 2:the.var.length-1){
-      my.SS.type.1.change[[z]]=summary(my.SS.type.1.dfs[[z+1]])$SS[[z]]
-    }
-
-
-    #### Make treatment
-    my.SS.type.1.change.total=0
-    for(y in 1:length(my.SS.type.1.change)){
-      my.SS.type.1.change.total=my.SS.type.1.change.total+my.SS.type.1.change[[y]]
-    }
-
-
-    #### Type II SS
-    #they are type 2, here is proof.
-    my.SS.type.2=NULL
-    my.SS.type.2.change=NULL
-    my.SSP.type.2.change.fa=NULL
-    my.latent.SSP.type.2.change=NULL
-    my.SSP.type.2.treat.fa=NULL
-    my.latent.SSP.type.2.treat=NULL
-
-
-    #### Type II SS
-    the.var.length=dim(my.new.df)[2]-1
-    kappa=the.var.length
-    #3n+1
-    my.SS.type.2.change[[1]]=summary(my.new.model[[kappa+1]])$SS[the.var.length]
-
-
-
-
-
-
-
-
-    #### Make latent ####
-    #### Make latent variables (~equivalent to ANOVAs) of Full model (i.e. type I)
-    my.SSP.type.2.change.fa.eigen=eigen(my.SS.type.2.change[[1]][[1]])
-    my.SSP.type.2.change.fa.values=1/sqrt(my.SSP.type.2.change.fa.eigen$values)
-    for(n in 2:length(my.SSP.type.2.change.fa.values)){
-      my.SSP.type.2.change.fa.values=rbind(my.SSP.type.2.change.fa.values,my.SSP.type.2.change.fa.values)
-    }
-    my.SSP.type.2.change.fa.values.t=t(my.SSP.total.fa.values)
-
-    my.SSP.type.2.change.fa[[1]]=my.SSP.type.2.change.fa.eigen$vectors%*%my.SSP.type.2.change.fa.values.t
-    my.latent.SSP.type.2.change[[1]]=my.SS.type.2.change[[1]][[1]]%*%my.SSP.type.2.change.fa[[1]]
-
-    #### Make residual totals ####
-    for(l in 2:{dim(my.new.df)[2]-1}){
-      my.gamma=kappa*l+1
-      my.SS.type.2.change[[l]]=summary(my.new.model[[my.gamma]])$SS[the.var.length]
-      my.SSP.type.2.change.fa.eigen=eigen(my.SS.type.2.change[[l]][[1]])
-      my.SSP.type.2.change.fa.values=1/sqrt(my.SSP.type.2.change.fa.eigen$values)
-      for(n in 2:length(my.SSP.type.2.change.fa.values)){
-        my.SSP.type.2.change.fa.values=rbind(my.SSP.type.2.change.fa.values,my.SSP.type.2.change.fa.values)
+    #### Partial totals
+    part.treat.total=NULL
+    for(X in 2:length(treat.model[[1]][[1]])){
+      if(X==2){
+        part.treat.total=treat.model[[1]][[1]][[X]]
+      }else{
+        part.treat.total=part.treat.total+treat.model[[1]][[1]][[X]]
       }
-      my.SSP.type.2.change.fa.values.t=t(my.SSP.total.fa.values)
+    }
 
-      my.SSP.type.2.change.fa[[l]]=my.SSP.type.2.change.fa.eigen$vectors%*%my.SSP.type.2.change.fa.values.t
-      my.latent.SSP.type.2.change[[l]]=my.SS.type.2.change[[l]][[1]]%*%my.SSP.type.2.change.fa[[l]]
+    #### Latent totals
+    if(show.latent){
+      latent.treat.model=my.nested.table[dim(my.nested.table)[1],8]
+      latent.part.treat.total=NULL
+      latent.part.total=NULL
+      for(X in 2:length(latent.treat.model[[1]][[1]])){
+        if(X==2){
+          latent.part.treat.total=latent.treat.model[[1]][[1]][[X]]
+        }else{
+          latent.part.treat.total=latent.part.treat.total+latent.treat.model[[1]][[1]][[X]]
+        }
+      }
     }
 
 
-    #### Get residual stuff
-    the.resid.SS=sum(diag(my.SSP.err))
+
+    #### Get residuals ####
+    #### Regular residuals
+    the.resid=sum(diag(treat.model[[1]][[2]]))
     the.resid.df=my.model$df.residual
 
 
-
-    #### Make SSCPs  of full matrix####
-    #### Get SSP treatment and error
-
-    my.SSP.treat=car::Anova(my.new.model[[my.y.levels+1]],type=SS.type,test=test.stat)$SSP
-    my.SSP.err=car::Anova(my.new.model[[my.y.levels+1]],type=SS.type,test=test.stat)$SSPE
-
-    ### Get total SSP
-    my.SSP.treat.total=my.SSP.treat[[1]]
-    for(i in 2:{length(my.SSP.treat)}){
-      my.SSP.treat.total=my.SSP.treat.total+my.SSP.treat[[i]]
-    }
-    my.SSP.total=my.SSP.treat.total+my.SSP.err
+    #### Partial residuals
+    part.resid.total=treat.model[[1]][[2]]
 
 
-    #### Get all df ####
-    my.SSP.total.df=my.y.levels*dim(my.model$model)[1]-1
-    my.SSP.err.df=my.model$df.residual
-    my.SSP.treat.df.total=my.SSP.total.df-my.SSP.err.df
-    my.SSP.treat.df=1
-    for(i in 2:length(my.SSP.treat)){
-      manova.grep=grep(paste("^",names(my.SSP.treat)[i],"$",sep=""),names(my.model$xlevels))
-      if(length(manova.grep)>0){
-        my.SSP.treat.df=c(my.SSP.treat.df,{length(my.model$xlevels[[manova.grep]])-1})
-      }else{
-        my.SSP.treat.df=c(my.SSP.treat.df,1)
-      }
+    #### Latent totals
+    if(show.latent){
+      latent.part.resid.total=latent.treat.model[[1]][[2]]
     }
 
+    #### Get totals ####
+    the.total=total.resid+treat.total+sum(diag(treat.model[[1]][[1]][[1]]))
+    the.total.df=total.resid.df+treat.df+my.y.levels
 
-    # #### MAKE REGULAR AND LATENT CONTRASTS ####
-    # for(i in 1:{my.y.levels}){
-    #   #### Pick right model
-    #   if(i==1){
-    #     my.contrast.model=my.new.model[[my.y.levels^2+1]]
-    #   }else{
-    #     my.contrast.model=my.new.model[[{i-1}*my.y.levels+1]]
-    #   }
-    #
-    #
-    #   #### Mean Square Error
-    #   my.MSE=mean(my.contrast.model$residuals^2)
-    #
-    #
-    #   #### Latent Mean Square Error
-    #   my.latent.MSE=NULL
-    #   for(j in 1:my.y.levels){
-    #     if(i==1){
-    #       my.latent.MSE=as.numeric(mean(my.contrast.model$residuals[i]^2))
-    #     }else{
-    #       my.latent.MSE=c(my.latent.MSE,as.numeric(mean(my.contrast.model$residuals[i]^2)))
-    #     }
-    #   }
-    #
-    #
-    #
-    #   #### Get mean responses for variables longer than 2
-    #   #### WARN! LEVEL NAMES IS GOING TO BREAK IT!!!! ####
-    #   my.count.means=NULL
-    #   my.count.n=NULL
-    #   level.names=NULL
-    #   for(q in 2:length(my.SSP.treat.df)){
-    #     if(my.SSP.treat.df[q]>1){
-    #       num.of.contrasts=my.SSP.treat.df[q]
-    #       if(q==2){
-    #         level.names=as.vector(levels(my.new.df[[q]]))
-    #       }else{
-    #         level.names=rbind(level.names,as.vector(levels(my.new.df[[q]])))
-    #       }
-    #       for(j in 1:{my.SSP.treat.df[q]+1})
-    #         if(j==1){
-    #           my.count.means[[q-1]]=as.list(mean(my.new.df[as.character(my.new.df[[q]])==level.names[j],1]))
-    #           my.count.n[[q-1]]=as.list(dim(my.new.df[as.character(my.new.df[[q]])==level.names[j],1])[1])
-    #         }else{
-    #           my.count.means[[q-1]]=c(my.count.means[[q-1]],mean(my.new.df[as.character(my.new.df[[q]])==level.names[j],1]))
-    #           my.count.n[[q-1]]=c(my.count.n[[q-1]],dim(my.new.df[as.character(my.new.df[[q]])==level.names[j],1])[1])
-    #         }
-    #     }
-    #   }
-    #
-    #   #### Make contrasts
-    #   my.contrasts=NULL
-    #   for(q in 2:length(my.SSP.treat.df)){
-    #     if(my.SSP.treat.df[q]>1){
-    #       num.of.contrasts=my.SSP.treat.df[q]
-    #       level.names=levels(my.new.df[[q]])
-    #       for(j in 1:{my.SSP.treat.df[q]})
-    #         if(j==1){
-    #           my.contrasts[[q-1]]=c(1,-1,rep(0,my.SSP.treat.df[q]-1))
-    #         }else{
-    #           my.contrasts[[q-1]]=rbind(my.contrasts[[q-1]],c(1,rep(0,j-1),-1,rep(0,my.SSP.treat.df[q]-j)))
-    #         }
-    #     }
-    #   }
-    #
-    #   #### Compute F values
-    #   my.contrasts.F=NULL
-    #   my.latent.contrasts.F=NULL
-    #   for(q in 2:length(my.SSP.treat.df)){
-    #     if(my.SSP.treat.df[q]>1){
-    #       num.of.contrasts=my.SSP.treat.df[q]
-    #       for(j in 1:{my.SSP.treat.df[q]})
-    #         if(j==1){
-    #           my.contrasts.I=as.integer(t(as.matrix(my.count.means[[q-1]])))%*%as.integer(as.matrix(my.contrasts[[q-1]][j,]))
-    #           my.contrasts.denom=sum(my.contrasts[[q-1]][j,]^2/as.integer(my.count.n[[q-1]]))
-    #           my.contrasts.F[[q-1]]=as.list({my.contrasts.I^2}/{my.latent.MSE[j]*my.contrasts.denom})
-    #           for(l in 1:{my.y.levels}){
-    #             if(l==1){
-    #               my.latent.contrasts.F[[q-1]]=as.list({my.contrasts.I^2}/{my.latent.MSE[l]*my.contrasts.denom})
-    #             }else{
-    #               my.latent.contrasts.F[[q-1]]=c(my.latent.contrasts.F[[q-1]],{my.contrasts.I^2}/{my.latent.MSE[l]*my.contrasts.denom})
-    #             }
-    #           }
-    #         }else{
-    #           my.contrasts.I=as.integer(t(as.matrix(my.count.means[[q-1]])))%*%as.integer(as.matrix(my.contrasts[[q-1]][j,]))
-    #           my.contrasts.denom=sum(my.contrasts[[q-1]][j,]^2/as.integer(my.count.n[[q-1]]))
-    #           my.contrasts.F[[q-1]]=c(my.contrasts.F[[q-1]],{my.contrasts.I^2}/{my.MSE*my.contrasts.denom})
-    #           for(l in 1:{my.y.levels}){
-    #             my.latent.contrasts.F[[q-1]]=c(my.latent.contrasts.F[[q-1]],{my.contrasts.I^2}/{my.latent.MSE[l]*my.contrasts.denom})
-    #           }
-    #         }
-    #     }
-    #   }
-    #
-    #   #### Compute SS from F values
-    #   #### NEED TO FIX
-    #   #### Fixed
-    #   #### change to partial resid.SS
-    #
-    #   my.contrasts.SS=NULL
-    #   my.latent.contrasts.SS=NULL
-    #   for(q in 2:length(my.SSP.treat.df)){
-    #     if(my.SSP.treat.df[q]>1){
-    #       num.of.contrasts=my.SSP.treat.df[q]
-    #       for(j in 1:{my.SSP.treat.df[q]}){
-    #         if(j==1){
-    #           my.contrasts.SS[[q-1]]=as.list({as.numeric(my.contrasts.F[[q-1]][j])*{the.resid.SS}*my.y.levels}/{the.resid.df})
-    #           for(l in 1:{my.y.levels}){
-    #             if(l==1){
-    #               my.latent.contrasts.SS[[q-1]]=as.list({as.numeric(my.latent.contrasts.F[[q-1]][1])*{my.SSP.err[q-1,q-1]}*1}/{the.resid.df-my.y.levels+1})
-    #             }else{
-    #               my.latent.contrasts.SS[[q-1]]=c(my.latent.contrasts.SS[[q-1]],{as.numeric(my.latent.contrasts.F[[q-1]][my.y.levels*l-1])*{my.SSP.err[q-1,q-1]}*1}/{the.resid.df-my.y.levels+1})
-    #             }
-    #           }
-    #         }else{
-    #           my.contrasts.SS[[q-1]]=c(my.contrasts.SS[[q-1]],{as.numeric(my.contrasts.F[[q-1]][j])*{the.resid.SS}*my.y.levels}/{the.resid.df})
-    #           for(l in 1:{my.y.levels}){
-    #             if(l==1){
-    #               my.latent.contrasts.SS[[q-1]]=c(my.latent.contrasts.SS[[q-1]],{as.numeric(my.latent.contrasts.F[[q-1]][j])*{my.SSP.err[q-1,q-1]}*1}/{the.resid.df-my.y.levels+1})
-    #             }else{
-    #               my.latent.contrasts.SS[[q-1]]=c(my.latent.contrasts.SS[[q-1]],{as.numeric(my.latent.contrasts.F[[q-1]][my.y.levels*j-1])*{my.SSP.err[q-1,q-1]}*1}/{the.resid.df-my.y.levels+1})
-    #             }
-    #           }
-    #         }
-    #       }
-    #     }
-    #   }
-    #
-    #
-    #   #### Make rownames
-    #   my.contrasts.names=NULL
-    #   for(q in 2:length(my.SSP.treat.df)){
-    #     if(my.SSP.treat.df[q]>1){
-    #       num.of.contrasts=my.SSP.treat.df[q]
-    #       for(j in 1:{my.SSP.treat.df[q]}){
-    #         if(j==1){
-    #           my.contrasts.names[[q-1]]=as.list(paste(level.names[[1]],"-",level.names[[j+1]]))
-    #         }else{
-    #           my.contrasts.names[[q-1]]=c(my.contrasts.names[[q-1]],paste(level.names[[1]],"-",level.names[[j+1]]))
-    #         }
-    #       }
-    #     }
-    #   }
-    #
-    #
-    #   #### Make table
-    #   #### NEED TO ADD PVAL SO CAN ADJUST ####
-    #   #### p.adjust works on set of p-vals!
-    #   my.contrasts.table=NULL
-    #   for(q in 2:length(my.SSP.treat.df)){
-    #     if(my.SSP.treat.df[q]>1){
-    #       num.of.contrasts=my.SSP.treat.df[q]
-    #       my.contrasts.table[[q-1]]=cbind(my.contrasts.names[[1]],my.contrasts.F[[1]],my.contrasts.SS[[1]])
-    #       colnames(my.contrasts.table[[q-1]])=c("name","F.val","SS")
-    #     }
-    #   }
-    # }
-    #
-    #
-    # #### Latent tables
-    # my.latent.contrasts.F.R=NULL
-    # my.latent.contrasts.SS.R=NULL
-    # for(q in 2:length(my.SSP.treat.df)){
-    #   if(my.SSP.treat.df[q]>1){
-    #     if(q==2){
-    #       the.latent.levels=1
-    #       num.of.contrasts=my.SSP.treat.df[q]
-    #       for(s in 2:my.SSP.treat.df[q]){
-    #         the.latent.levels=c(the.latent.levels,my.y.levels*s-1)}
-    #       my.latent.contrasts.F.R[[q-1]]=as.list(my.latent.contrasts.F[[q-1]][[1]])
-    #       my.latent.contrasts.SS.R[[q-1]]=as.list(my.latent.contrasts.SS[[q-1]][[1]])
-    #       for(r in 2:length(the.latent.levels)){
-    #         my.latent.contrasts.F.R[[q-1]]=c(my.latent.contrasts.F.R[[q-1]],my.latent.contrasts.F[[q-1]][[the.latent.levels[r]]])
-    #         my.latent.contrasts.SS.R[[q-1]]=c(my.latent.contrasts.SS.R[[q-1]],my.latent.contrasts.SS[[q-1]][[the.latent.levels[r]]])
-    #       }
-    #       for(v in 2:my.y.levels){
-    #         the.latent.levels=NULL
-    #         for(s in 1:my.SSP.treat.df[q]){
-    #           the.latent.levels=c(the.latent.levels,my.y.levels*s)}
-    #         for(r in 1:length(the.latent.levels)){
-    #           my.latent.contrasts.F.R[[q-1]]=c(my.latent.contrasts.F.R[[q-1]],my.latent.contrasts.F[[q-1]][[the.latent.levels[r]]])
-    #           my.latent.contrasts.SS.R[[q-1]]=c(my.latent.contrasts.SS.R[[q-1]],my.latent.contrasts.SS[[q-1]][[the.latent.levels[r]]])
-    #         }
-    #       }
-    #     }else{
-    #       for(v in 1:my.y.levels){
-    #         the.latent.levels=NULL
-    #         #the.latent.levels=q-1
-    #         for(s in 1:my.SSP.treat.df[q]){
-    #           the.latent.levels=c(the.latent.levels,my.y.levels*s)}
-    #         for(r in 1:length(the.latent.levels)){
-    #           my.latent.contrasts.F.R[[q-1]]=c(my.latent.contrasts.F.R[[q-1]],my.latent.contrasts.F[[q-1]][[the.latent.levels[r]]])
-    #           my.latent.contrasts.SS.R[[q-1]]=c(my.latent.contrasts.SS.R[[q-1]],my.latent.contrasts.SS[[q-1]][[the.latent.levels[r]]])
-    #         }
-    #       }
-    #     }
-    #   }
-    # }
-    # my.latent.contrasts.table=NULL
-    # for(q in 2:length(my.SSP.treat.df)){
-    #   num.of.contrasts=my.SSP.treat.df[q]
-    #   if(my.SSP.treat.df[q]>1){
-    #     for(g in 1:my.y.levels){
-    #       my.latent.contrasts.table[[q-1]][[g]]=cbind(my.contrasts.names[[1]],my.latent.contrasts.F.R[[q-1]][{g+ifelse(g>1,{g-1}*my.SSP.treat.df[q]-1,0)}:{g*my.SSP.treat.df[q]}],my.latent.contrasts.SS.R[[q-1]][{g+ifelse(g>1,{g-1}*my.SSP.treat.df[q]-1,0)}:{g*my.SSP.treat.df[q]}])
-    #     }
-    #   }
-    # }
+    #### Partial totals
+    partial.total=part.resid.total+part.treat.total+treat.model[[1]][[1]][[1]]
 
-
-    #### LATENT MODEL ####
-    #### Make latent variables (~equivalent to ANOVAs) of Full matrix
-    my.SSP.total.fa.eigen=eigen(my.SSP.total)
-    my.SSP.total.fa.values=1/sqrt(my.SSP.total.fa.eigen$values)
-    for(i in 2:length(my.SSP.total.fa.values)){
-      my.SSP.total.fa.values=rbind(my.SSP.total.fa.values,my.SSP.total.fa.values)
-    }
-    my.SSP.total.fa.values.t=t(my.SSP.total.fa.values)
-    my.SSP.total.fa=my.SSP.total.fa.eigen$vectors%*%my.SSP.total.fa.values.t
-    my.latent.SSP.total=my.SSP.total%*%my.SSP.total.fa
-
-    my.SSP.treat.fa.eigen=NULL
-    my.SSP.treat.fa.values=NULL
-    my.SSP.treat.fa.values.t=NULL
-    my.SSP.treat.fa=NULL
-    my.latent.SSP.treat=NULL
-    for(i in 1:length(my.SSP.treat)){
-      my.SSP.treat.fa.eigen[[i]]=eigen(my.SSP.treat[[i]])
-
-
-      my.SSP.treat.fa.values[[i]]=tryCatch(as.matrix({1/sqrt(my.SSP.treat.fa.eigen[[i]]$values)}),
-                                           warning=function(w){
-                                             my.SSP.treat.fa.values[[i]]=matrix(ncol=1,nrow=length(my.SSP.treat.fa.eigen[[i]]$values))
-                                             for(j in 1:length(my.SSP.treat.fa.eigen[[i]]$values)){
-                                               my.SSP.treat.fa.values[[i]][j]={1/sqrt(max(my.SSP.treat.fa.eigen[[i]]$values[j],0))}
-                                               if(my.SSP.treat.fa.values[[i]][j]==Inf){
-                                                 my.SSP.treat.fa.values[[i]][j]=0
-                                               }
-                                             }
-                                             return(my.SSP.treat.fa.values[[i]])
-                                           }
-      )
-
-      for(j in 2:length(my.SSP.treat.fa.values[[i]])){
-        my.SSP.treat.fa.values[[i]]=cbind(my.SSP.treat.fa.values[[i]],my.SSP.treat.fa.values[[i]])
-      }
-      my.SSP.treat.fa[[i]]=my.SSP.treat.fa.eigen[[i]]$vectors%*%my.SSP.treat.fa.values[[i]]
-      my.latent.SSP.treat[[i]]=my.SSP.treat[[i]]%*%my.SSP.treat.fa[[i]]
+    #### Latent totals
+    if(show.latent){
+      latent.part.total=latent.part.treat.total+latent.part.treat.total+latent.treat.model[[1]][[1]][[1]]
     }
 
 
 
-
-
-    #### Get SSP treatment and error for Type II error SS ####
-
-    my.SSP.treat=car::Anova(my.new.model[[my.y.levels+1]],type=SS.type,test=test.stat)$SSP
-    my.SSP.err=car::Anova(my.new.model[[my.y.levels+1]],type=SS.type,test=test.stat)$SSPE
-
-
-
-
-    #### Get total SSP ####
-    my.SSP.treat.total=my.SSP.treat[[1]]
-    for(i in 2:{length(my.SSP.treat)}){
-      my.SSP.treat.total=my.SSP.treat.total+my.SSP.treat[[i]]
-    }
-    my.SSP.total=my.SSP.treat.total+my.SSP.err
-
-
-
-
-
-
-
-    #### Make error matrices ####
-    my.SSP.err.fa.eigen=eigen(my.SSP.err)
-    my.SSP.err.fa.values=1/sqrt(my.SSP.err.fa.eigen$values)
-    for(i in 2:length(my.SSP.err.fa.values)){
-      my.SSP.err.fa.values=rbind(my.SSP.err.fa.values,my.SSP.err.fa.values)
-    }
-    my.SSP.err.fa.values.t=t(my.SSP.err.fa.values)
-    my.SSP.err.fa=my.SSP.err.fa.eigen$vectors%*%my.SSP.err.fa.values.t
-
-    my.latent.SSP.err=my.SSP.err%*%my.SSP.err.fa
-
-
-
-
-
-
-
-
-
-
-
-    #### Get treatment change totals ####
-    my.SSP.treat.change.total=0
-    my.SSP.treat.change=as.data.frame(matrix(ncol=my.y.levels,nrow=my.y.levels))
-    my.latent.SSP.treat.change.total=0
-    my.latent.SSP.treat.change=as.data.frame(matrix(ncol=my.y.levels,nrow=my.y.levels))
-    for(i in 2:length(my.SSP.treat)){
-      if(i==2){
-        my.SSP.treat.change=my.SSP.treat[[2]]
-        my.latent.SSP.treat.change=my.latent.SSP.treat[[2]]
-      }else{
-        my.SSP.treat.change=my.SSP.treat.change+my.SSP.treat[[i]]
-        my.latent.SSP.treat.change=my.latent.SSP.treat.change+my.SSP.treat[[i]]
-      }
-    }
-    my.SSP.treat.change.df=sum(my.SSP.treat.df[-1])*my.y.levels
-    my.latent.SSP.treat.change.df=my.SSP.treat.change.df/my.y.levels
-    my.SSP.treat.change.total=sum(diag(my.SSP.treat.change))
-    my.latent.SSP.treat.change.total=sum(diag(my.latent.SSP.treat.change))
-
-
-
-
-
-
-
-
-    #### Get total change stuff ####
-    my.total.change=my.SSP.err+my.SSP.treat.change
-    the.total.change.SS=the.resid.SS+sum(diag(my.SS.type.1.change.total))
-    the.total.change.df=the.resid.df+{my.SSP.treat.change.df/my.y.levels}
-
-
-
-
+    #### Make dependent variable rownames ####
+    my.dv.rownames=rownames(part.resid.total)
 
     #### Make basic table ####
     my.table.names=c("var","test.stat","f.val","SS","df","mult.df","resid df","p.val")
@@ -1184,29 +812,33 @@ quick.reg = function(my.model,
     names(my.manova.table)=my.table.names
     my.line.var=1
     for(i in 1:length(my.SSP.treat)){
-
+      if(i==1){
+        my.i=i
+      }else{
+        my.i=2*i-1
+      }
       #### Put in basic line ####
-      my.treat.err=solve(my.SSP.err)%*%my.SSP.treat[[i]]
+      my.treat.err=solve(my.SSP.err)%*%treat.model[[1]][[1]][[my.i]]
       my.test.stat=quick.m.test(my.treat.err,test.stat)
-      my.SS=quick.tr(my.SSP.treat[[i]])
-      my.df=my.y.levels*my.SSP.treat.df[i]
-      my.resid.df=ifelse(i==1,{my.y.levels*the.resid.df},min({my.SSP.err.df*my.SSP.treat.df[i]-my.SSP.treat.df[i]},my.y.levels*my.SSP.err.df-my.SSP.treat.df[i]))
-      my.f.val={my.SS/my.df}/{the.resid.SS/my.resid.df}
+      my.SS=sum(diag(treat.model[[1]][[i]]))
+      my.df=my.y.levels*ifelse(my.i==1,my.nested.table[my.i,5],1)
+      my.resid.df=ifelse(my.i==1,{my.y.levels*the.resid.df},min({the.resid.df*my.nested.table[my.i,5]-my.nested.table[my.i,5]},my.y.levels*the.resid.df-my.nested.table[my.i,5]))
+      my.f.val={my.SS/my.df}/{the.resid/the.resid.df}
       my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
-      my.manova.table[my.line.var,]=c(names(my.SSP.treat)[i],my.test.stat,my.f.val,my.SS,ifelse(i==1,NA,my.df/my.y.levels),ifelse(i==1,my.y.levels,my.df),my.resid.df,my.p.val)
+      my.manova.table[my.line.var,]=c(ifelse(i==1,"Intercept",my.nested.table[my.i,1]),my.test.stat,my.f.val,my.SS,ifelse(my.i==1,NA,my.df/my.y.levels),ifelse(my.i==1,my.y.levels,my.df),my.resid.df,my.p.val)
       my.line.var=my.line.var+1
 
 
       #### Put in decomposed factors (y constrasts) ####
       #### Intercept
-      if({show.intercepts & i==1}){
+      if({show.intercepts & my.i==1}){
         for(y in 1:my.y.levels){
-          my.name=rownames(my.SSP.total)[y]
+          my.name=my.dv.rownames[y]
           my.test.stat=NA
-          my.SS=my.SSP.treat[[i]][y,y]
-          my.df=my.SSP.treat.df[i]
-          my.resid.df=my.SSP.err.df
+          my.SS=treat.model[[1]][[my.i]][y,y]
+          my.df=1
+          my.resid.df=the.resid.df
           my.f.val={my.SS/my.df}/{sum(diag(my.SSP.err))/my.resid.df}
           my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
@@ -1215,14 +847,15 @@ quick.reg = function(my.model,
         }
       }
       #### Other
-      if({show.y.contrasts & i!=1}){
+      if({show.y.contrasts & my.i!=1}){
         for(y in 1:my.y.levels){
-          my.name=paste(ifelse(real.names,rownames(my.SSP.total)[y],y),"|",names(my.SSP.treat)[i],sep="")
+          my.name=paste(ifelse(real.names,my.dv.rownames[y],y),"|",my.nested.table[my.i,1],sep="")
           my.test.stat=NA
-          my.SS=my.SSP.treat[[i]][y,y]
-          my.df=my.SSP.treat.df[i]
-          my.resid.df=min(abs(my.y.levels*my.SSP.err.df-my.df*my.SSP.err.df-my.df),abs(my.y.levels*my.SSP.err.df-my.df))
-          my.f.val={my.SS/my.df}/{sum(diag(my.SSP.err))/my.resid.df}
+          my.SS=treat.model[[1]][[my.i]][y,y]
+          my.df=my.nested.table[my.i,7]
+          my.resid.df=min(abs(my.y.levels*the.resid.df-my.df*the.resid.df-my.df),abs(my.y.levels*the.resid.df-my.df))
+          my.resid=part.resid.total[y,y]
+          my.f.val={my.SS/my.df}/{my.resid/my.resid.df}
           my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
           my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,NA,my.resid.df,my.p.val)
@@ -1235,14 +868,14 @@ quick.reg = function(my.model,
             my.counter=c(my.counter,r)
           }
           my.counter=c(my.counter,1)
-          if(show.latent &i!=1){
-            my.i.temp=my.counter[i-1]
+          if(show.latent &my.i!=1){
+            my.my.i.temp=my.counter[my.i-1]
             my.y=y
             my.name=NA
-            my.df=my.SSP.treat.df[my.i.temp]
+            my.df=my.SSP.treat.df[my.my.i.temp]
             my.test.stat=NA
             my.resid.df=my.SSP.err.df-my.df
-            my.SS=my.latent.SSP.type.2.change[[my.i.temp]][my.y,1]
+            my.SS=my.latent.SSP.type.2.change[[my.my.i.temp]][my.y,1]
             my.f.val={my.SS/my.df}/{my.latent.SSP.err[my.y,my.y]/my.resid.df}
             my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
@@ -1251,14 +884,14 @@ quick.reg = function(my.model,
           }
 
           #### Put in latent contrasts ####
-          if(show.contrasts & show.latent & i!=1){
+          if(show.contrasts & show.latent & my.i!=1){
             #### Check length
-            if({my.SSP.treat.df[i]>1}){
-              other.manova.grep=grep(paste("^",names(my.SSP.treat)[i],"$",sep=""),names(my.model$xlevels))
-              for(k in 1:{my.SSP.treat.df[i]}){
+            if({my.SSP.treat.df[my.i]>1}){
+              other.manova.grep=grep(paste("^",names(my.SSP.treat)[my.i],"$",sep=""),names(my.model$xlevels))
+              for(k in 1:{my.SSP.treat.df[my.i]}){
                 my.name=my.contrasts.table[[other.manova.grep]][k,1]
-                my.f.val=my.latent.contrasts.table[[other.manova.grep]][[i-1]][k,2]
-                my.SS=my.latent.contrasts.table[[other.manova.grep]][[i-1]][k,3]
+                my.f.val=my.latent.contrasts.table[[other.manova.grep]][[my.i-1]][k,2]
+                my.SS=my.latent.contrasts.table[[other.manova.grep]][[my.i-1]][k,3]
                 my.test.stat=NA
                 my.df=1
                 my.mult.df=NA
@@ -1275,9 +908,9 @@ quick.reg = function(my.model,
           #### Not right. Don't have it decomposed this way.
           if(show.contrasts & !show.latent & F){
             #### Check length
-            if({my.SSP.treat.df[i]>1}){
-              other.manova.grep=grep(paste("^",names(my.SSP.treat)[i],"$",sep=""),names(my.model$xlevels))
-              for(k in 1:{my.SSP.treat.df[i]}){
+            if({my.SSP.treat.df[my.i]>1}){
+              other.manova.grep=grep(paste("^",names(my.SSP.treat)[my.i],"$",sep=""),names(my.model$xlevels))
+              for(k in 1:{my.SSP.treat.df[my.i]}){
                 my.name=my.contrasts.table[[other.manova.grep]][k,1]
                 my.f.val=my.contrasts.table[[other.manova.grep]][k,2]
                 my.SS=my.contrasts.table[[other.manova.grep]][k,3]
@@ -1298,9 +931,9 @@ quick.reg = function(my.model,
       #### Put in contrasts ####
       if(show.contrasts & !show.latent & !show.y.contrasts){
         #### Check length
-        if({my.SSP.treat.df[i]>1}){
-          other.manova.grep=grep(paste("^",names(my.SSP.treat)[i],"$",sep=""),names(my.model$xlevels))
-          for(k in 1:{my.SSP.treat.df[i]}){
+        if({my.SSP.treat.df[my.i]>1}){
+          other.manova.grep=grep(paste("^",names(my.SSP.treat)[my.i],"$",sep=""),names(my.model$xlevels))
+          for(k in 1:{my.SSP.treat.df[my.i]}){
             my.name=my.contrasts.table[[other.manova.grep]][k,1]
             my.f.val=my.contrasts.table[[other.manova.grep]][k,2]
             my.SS=my.contrasts.table[[other.manova.grep]][k,3]
@@ -1323,15 +956,15 @@ quick.reg = function(my.model,
         my.counter=c(my.counter,r)
       }
       my.counter=c(my.counter,1)
-      if(show.latent &i!=1 & !show.y.contrasts){
-        my.i.temp=my.counter[i-1]
+      if(show.latent &my.i!=1 & !show.y.contrasts){
+        my.my.i.temp=my.counter[my.i-1]
         for(y in 1:{my.y.levels}){
           my.y=y
-          my.name=paste(ifelse(real.names,rownames(my.SSP.total)[y],y),"|",names(my.SSP.treat)[i],sep="")
-          my.df=my.SSP.treat.df[my.i.temp]
+          my.name=paste(ifelse(real.names,rownames(my.SSP.total)[y],y),"|",names(my.SSP.treat)[my.i],sep="")
+          my.df=my.SSP.treat.df[my.my.i.temp]
           my.test.stat=NA
           my.resid.df=my.SSP.err.df-my.df
-          my.SS=my.latent.SSP.type.2.change[[my.i.temp]][my.y,1]
+          my.SS=my.latent.SSP.type.2.change[[my.my.i.temp]][my.y,1]
           my.f.val={my.SS/my.df}/{my.latent.SSP.err[my.y,my.y]/my.resid.df}
           my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
@@ -1341,9 +974,9 @@ quick.reg = function(my.model,
           #### Put in latent contrasts ####
           if(show.contrasts & !{show.contrasts & show.latent}){
             #### Check length
-            if({my.SSP.treat.df[i]>1}){
-              other.manova.grep=grep(paste("^",names(my.SSP.treat)[i],"$",sep=""),names(my.model$xlevels))
-              for(k in 1:{my.SSP.treat.df[i]}){
+            if({my.SSP.treat.df[my.i]>1}){
+              other.manova.grep=grep(paste("^",names(my.SSP.treat)[my.i],"$",sep=""),names(my.model$xlevels))
+              for(k in 1:{my.SSP.treat.df[my.i]}){
                 my.name=my.contrasts.table[[other.manova.grep]][k,1]
                 my.f.val=my.latent.contrasts.table[[other.manova.grep]][[y]][k,2]
                 my.SS=my.latent.contrasts.table[[other.manova.grep]][[y]][k,3]
@@ -1363,8 +996,8 @@ quick.reg = function(my.model,
 
 
       #### Put in treatment ####
-      #### From Type I statistics
-      if(i==1){
+      #### From Type my.i statistics
+      if(my.i==1){
         my.test.stat=quick.m.test(my.SS.type.1.change.total,test.stat)
         my.SS=sum(diag(my.SS.type.1.change.total))
         my.df=my.SSP.treat.change.df
