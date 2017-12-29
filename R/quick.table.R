@@ -36,6 +36,8 @@ quick.table=function(my.table,
 
   attr(my.table,"quick.print.type")=print.type
   attr(my.table,"quick.abbrev.length")=abbrev.length
+  attr(my.table,"quick.round")=round.num
+  attr(my.table,"quick.type")=type
   attr(my.table,"class")=c(attr(my.table,"class"),"quick.table")
 
 
@@ -52,7 +54,7 @@ quick.table=function(my.table,
   treat.loc=grep("Treatment Change",my.table[[1]])
   total.loc=grep("Total Change",my.table[[1]])
   end.loc=grep("^Total$",my.table[[1]])
-
+  my.table2=my.table
   #### Swap value for NA (i.e. remove it) ####
   if(!is.null(swap.na)){
     na.vals=strsplit(swap.na)[[1]]
@@ -65,20 +67,15 @@ quick.table=function(my.table,
 
   #### Round ####
   for(i in 1:length(round.rows)){
-    my.table[[round.rows[i]]]=round(as.numeric(my.table[[round.rows[i]]]),digits =round.num)
+    my.table2[[round.rows[i]]]=round(as.numeric(my.table2[[round.rows[i]]]),digits =round.num)
   }
 
   #### P-val ####
-  for(i in 1:end.loc){
-    if(!is.na(my.table[i,p.val.row])){
-      my.table[i,p.val.row]=round(as.numeric(my.table[i,p.val.row]),digits=3)
-      if(my.table[i,p.val.row]==0){my.table[i,p.val.row]="<.001"}
-      if(my.table[i,p.val.row]==1){my.table[i,p.val.row]=">.999"}
-    }
-  }
+  my.table2=quick.p.val(my.table2,p.val.row)
+
 
   #### Change NA to &nbsp; ####
-  my.table=replace(my.table,is.na(my.table),"&nbsp;")
+  my.table2=replace(my.table2,is.na(my.table2),"&nbsp;")
 
   #### Add style and basic tag structure####
   attr(my.table,"quick.doctype")=paste("<!DOCTYPE html --- Created with quick.tasks by Christopher Kraner>")
@@ -119,23 +116,23 @@ quick.table=function(my.table,
   for(i in 1:end.loc){
 
     #### Variable name
-    if(i==1 & my.table[1,1]=="Intercept Change"){
+    if(i==1 & my.table2[1,1]=="Intercept Change"){
       #### GLM stuff
       #### Make th, add id="change"
-      my.line=paste("<tr id=\"int\"><th>",my.table[i,1],"</th>")
+      my.line=paste("<tr id=\"int\"><th>",my.table2[i,1],"</th>")
     }else if(i==treat.loc | i==total.loc){
-      my.line=paste("<tr id=\"change\"><td align=\"left\"><b>",my.table[i,1],"</b></td>")
+      my.line=paste("<tr id=\"change\"><td align=\"left\"><b>",my.table2[i,1],"</b></td>")
     }else if(i==1 & i==int.loc){
-      my.line=paste("<tr id=\"int\"><td>",my.table[i,1],"</td>")
+      my.line=paste("<tr id=\"int\"><td>",my.table2[i,1],"</td>")
     }else if(i>total.loc){
-      my.line=paste("<tr><td align=\"left\"><b>",my.table[i,1],"</b></td>")
+      my.line=paste("<tr><td align=\"left\"><b>",my.table2[i,1],"</b></td>")
     }else{
-      my.line=paste("<tr><td>",my.table[i,1],"</td>")
+      my.line=paste("<tr><td>",my.table2[i,1],"</td>")
     }
 
     #### Rest of row
     for(j in 2:p.val.row){
-      my.line=paste(my.line,"<td>",my.table[i,j],"</td>")
+      my.line=paste(my.line,"<td>",my.table2[i,j],"</td>")
     }
 
     my.line=paste(my.line,"</tr>")
@@ -170,4 +167,30 @@ quick.table=function(my.table,
   }
 
   return(my.table)
+}
+
+
+quick.table.check=function(q.tab){
+
+
+
+  #### Turn HTML into something easily useable
+  row.check=attr(q.tab,"quick.rows")
+  row.split=strsplit(row.check,"</tr>")
+  col.split=lapply(row.split,strsplit,"</td>")
+  col.split=lapply(col.split[[1]],strsplit,"<td>")
+
+  #### Get round number and round table
+  round.num=attr(q.tab,"quick.round")
+  if(attr(q.tab,"quick.type")=="manova" | attr(q.tab,"quick.type")=="stats:manova"){
+    q.tab[[2]]=round(as.numeric(q.tab[[2]]),digits=round.num)
+    q.tab[[3]]=round(as.numeric(q.tab[[3]]),digits=round.num)
+    q.tab[[4]]=round(as.numeric(q.tab[[4]]),digits=round.num)
+  }
+
+  #### P-val
+  p.row=grep("p.val",colnames(q.tab))
+  q.tab=quick.p.val(q.tab,p.row)
+  #### Check against values in table
+
 }

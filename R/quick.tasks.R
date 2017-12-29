@@ -1216,9 +1216,9 @@ quick.reg = function(my.model,
     }else{
       the.footer=NULL
     }
-    quick.table(my.manova.table,"manova",test=test.stat,SS.type = SS.type, abbrev.length = abbrev.length,the.footer = the.footer)
+    my.html.table=quick.table(my.manova.table,"manova",test=test.stat,SS.type = SS.type, abbrev.length = abbrev.length,the.footer = the.footer)
 
-      return()
+      return(my.html.table)
 
     #### ETA-SQ Stuff to finish.... ####
     # #### Make eta-sq

@@ -4,8 +4,25 @@
 ######################## 12/2017 ###########################
 ############################################################
 
-
-
+#' P-val Stuff
+#'
+#' Helper function to make list of null model, pre models,
+#' and full models for calculating type II SS (and eventually
+#' type III SS).
+#'
+#' @param my.model Model to be used
+#' @return List of lists with 3 pieces: null model, pre models, and full models
+#' @keywords Explore
+quick.p.val=function(my.table3,p.val.row){
+for(i in 1:dim(my.table3)[1]){
+  if(!is.na(my.table3[i,p.val.row])){
+    my.table3[i,p.val.row]=round(as.numeric(my.table3[i,p.val.row]),digits=3)
+    if(my.table3[i,p.val.row]==0){my.table3[i,p.val.row]="<.001"}
+    if(my.table3[i,p.val.row]==1){my.table3[i,p.val.row]=">.999"}
+  }
+}
+  return(my.table3)
+}
 
 #' Formula Dissecter
 #'
