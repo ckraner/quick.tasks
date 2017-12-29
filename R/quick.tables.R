@@ -987,7 +987,7 @@ quick.reg = function(my.model,
       my.f.val={my.SS/my.df}/{the.resid/the.resid.df}
       my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
-      my.manova.table[my.line.var,]=c(ifelse(i==1,"Intercept",my.nested.table[my.i,1]),my.test.stat,my.f.val,my.SS,ifelse(my.i==1,NA,my.df/my.y.levels),ifelse(my.i==1,my.y.levels,my.df),my.resid.df,my.p.val)
+      my.manova.table[my.line.var,]=c(ifelse(i==1,"(Intercept)",my.nested.table[my.i,1]),my.test.stat,my.f.val,my.SS,ifelse(my.i==1,NA,my.df/my.y.levels),ifelse(my.i==1,my.y.levels,my.df),my.resid.df,my.p.val)
       my.line.var=my.line.var+1
 
 
@@ -1169,7 +1169,7 @@ quick.reg = function(my.model,
         my.f.val={my.SS/my.df}/{as.numeric(the.resid.SS)/the.resid.df}
         my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
-        my.manova.table[my.line.var,]=c("Treatment",my.test.stat,my.f.val,my.SS,{my.df/my.y.levels},my.df,my.resid.df,my.p.val)
+        my.manova.table[my.line.var,]=c("Treatment Change",my.test.stat,my.f.val,my.SS,{my.df/my.y.levels},my.df,my.resid.df,my.p.val)
         my.line.var=my.line.var+1
 
         #### Treatment Y Contrasts ####
@@ -1226,7 +1226,9 @@ quick.reg = function(my.model,
     }
 
     #### Put in residuals, total change, total ss ####
-    my.manova.table[my.line.var,]=c("Total Residuals",NA,NA,the.resid,the.resid.df,NA,my.y.levels*the.resid.df,NA)
+    my.manova.table[my.line.var,]=c("Total Change",NA,NA,as.numeric(treat.total),"*","*",NA,NA,rep(NA,v.p.rep))
+    my.line.var=my.line.var+1
+    my.manova.table[my.line.var,]=c("Residuals",NA,NA,the.resid,the.resid.df,my.y.levels*the.resid.df,NA,NA,rep(NA,v.p.rep))
     my.line.var=my.line.var+1
     if(show.y.contrasts){
       for(i in 1:my.y.levels){
@@ -1244,7 +1246,7 @@ quick.reg = function(my.model,
         my.line.var=my.line.var+1
       }
     }
-    my.manova.table[my.line.var,]=c("Total SS",NA,NA,the.total,the.total.df,NA,my.y.levels*the.total.change.df,NA)
+    my.manova.table[my.line.var,]=c("Total",NA,NA,the.total,the.total.df,my.y.levels*the.total.change.df,NA,NA,rep(NA,v.p.rep))
 
 
     #### Table inits ####
