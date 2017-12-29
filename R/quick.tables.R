@@ -97,13 +97,15 @@ quick.part.cont=function(my.nested.table,SS.type=2,adjustment="bonferroni",abbre
         }
       }
 
-
-      #### Compute F values & SS
+      #pf(my.f.val,my.df,my.resid.df,lower.tail = F)
+      #### Compute F values & SS & P-val
       my.contrasts.F=NULL
       my.contrasts.SSC=NULL
+      my.contrasts.p=NULL
       if(latent.cont){
         my.latent.contrasts.F=NULL
         my.latent.contrasts.SSC=NULL
+        my.latent.contrasts.p=NULL
       }
       for(j in 1:{num.of.contrasts}){
         if(j==1){
@@ -111,11 +113,13 @@ quick.part.cont=function(my.nested.table,SS.type=2,adjustment="bonferroni",abbre
           my.contrasts.denom=sum(my.contrasts[j,]^2/as.integer(my.count.n))
           my.contrasts.SSC=as.list({my.contrasts.I^2}/{my.contrasts.denom})
           my.contrasts.F=as.list({my.contrasts.I^2}/{my.MSE*my.contrasts.denom})
+          my.contrasts.p=as.list(pf(my.contrasts.F[[j]],1,the.resid.df,lower.tail = F))
           if(latent.cont){
             for(l in 1:{my.y.levels}){
               my.latent.contrasts.I=as.integer(t(as.matrix(my.latent.count.means[[l]])))%*%as.integer(as.matrix(my.contrasts[j,]))
               my.latent.contrasts.SSC[[l]]=as.list({my.latent.contrasts.I^2}/{my.contrasts.denom})
               my.latent.contrasts.F[[l]]=as.list({my.latent.contrasts.I^2}/{my.latent.MSE[l]*my.contrasts.denom})
+              my.latent.contrasts.p[[l]]=as.list(pf(my.latent.contrasts.F[[l]][[j]],1,the.resid.df,lower.tail = F))
             }
           }
         }else{
@@ -123,17 +127,25 @@ quick.part.cont=function(my.nested.table,SS.type=2,adjustment="bonferroni",abbre
           my.contrasts.denom=sum(my.contrasts[j,]^2/as.integer(my.count.n))
           my.contrasts.SSC=c(my.contrasts.SSC,{my.contrasts.I^2}/{my.contrasts.denom})
           my.contrasts.F=c(my.contrasts.F,{my.contrasts.I^2}/{my.MSE*my.contrasts.denom})
+          my.contrasts.p=c(my.contrasts.p,pf(my.contrasts.F[[j]],1,the.resid.df,lower.tail = F))
           if(latent.cont){
             for(l in 1:{my.y.levels}){
               my.latent.contrasts.I=as.integer(t(as.matrix(my.latent.count.means[[l]])))%*%as.integer(as.matrix(my.contrasts[j,]))
               my.latent.contrasts.SSC[[l]]=c(my.latent.contrasts.SSC[[l]],{my.latent.contrasts.I^2}/{my.contrasts.denom})
               my.latent.contrasts.F[[l]]=c(my.latent.contrasts.F[[l]],{my.latent.contrasts.I^2}/{my.latent.MSE[l]*my.contrasts.denom})
+              my.latent.contrasts.p[[l]]=c(my.latent.contrasts.p[[l]],pf(my.latent.contrasts.F[[l]][[j]],1,the.resid.df,lower.tail = F))
             }
           }
         }
       }
 
-
+      #### Make p-val Adjustments
+      my.contrasts.p=p.adjust(my.contrasts.p,method=adjustment)
+      if(latent.cont){
+        for(l in 1:{my.y.levels}){
+          my.latent.contrasts.p[[l]]=p.adjust(my.latent.contrasts.p[[l]],method=adjustment)
+        }
+      }
       #### Make rownames
       my.contrasts.names=NULL
       for(j in 1:{num.of.contrasts}){
@@ -146,7 +158,7 @@ quick.part.cont=function(my.nested.table,SS.type=2,adjustment="bonferroni",abbre
 
 
       #### Add to table
-      my.contrasts.4.table=cbind(as.matrix(unlist(my.contrasts.names)),as.matrix(unlist(my.contrasts.F)),as.matrix(unlist(my.contrasts.SSC)))
+      my.contrasts.4.table=cbind(as.matrix(unlist(my.contrasts.names)),as.matrix(unlist(my.contrasts.F)),as.matrix(unlist(my.contrasts.SSC)),as.matrix(my.contrasts.p))
       contr.grep=grep("^Contrasts$",colnames(my.nested.table2))
       my.nested.table2[p,contr.grep]=list(my.contrasts.4.table)
 
@@ -154,9 +166,9 @@ quick.part.cont=function(my.nested.table,SS.type=2,adjustment="bonferroni",abbre
         my.latent.contrasts.4.table=NULL
         for(V in 1:my.y.levels){
           if(V==1){
-            my.latent.contrasts.4.table=cbind(as.matrix(unlist(my.contrasts.names)),as.numeric(as.matrix(unlist(my.latent.contrasts.F[[V]]))),as.matrix(as.numeric(unlist(my.latent.contrasts.SSC[[V]]))))
+            my.latent.contrasts.4.table=cbind(as.matrix(unlist(my.contrasts.names)),as.numeric(as.matrix(unlist(my.latent.contrasts.F[[V]]))),as.matrix(as.numeric(unlist(my.latent.contrasts.SSC[[V]]))),as.matrix(my.latent.contrasts.p[[V]]))
           }else{
-            my.latent.contrasts.4.table=cbind(my.latent.contrasts.4.table,as.matrix(unlist(my.contrasts.names)),as.numeric(as.matrix(unlist(my.latent.contrasts.F[[V]]))),as.matrix(as.numeric(unlist(my.latent.contrasts.SSC[[V]]))))
+            my.latent.contrasts.4.table=cbind(my.latent.contrasts.4.table,as.matrix(unlist(my.contrasts.names)),as.numeric(as.matrix(unlist(my.latent.contrasts.F[[V]]))),as.matrix(as.numeric(unlist(my.latent.contrasts.SSC[[V]]))),as.matrix(my.latent.contrasts.p[[V]]))
           }
         }
         latent.contr.grep=grep("^Latent Contrasts$",colnames(my.nested.table2))
@@ -1004,14 +1016,14 @@ quick.reg = function(my.model,
               for(k in 1:{my.nested.table[my.i,7]}){
                 my.name=my.nested.table[my.i,11][[1]][k,1]
                 my.f.val=as.numeric(my.nested.table[my.i,11][[1]][k,2])
-                my.SS=as.numeric(my.nested.table[my.i,11][[1]][k,2])
+                my.SS=as.numeric(my.nested.table[my.i,11][[1]][k,3])
                 my.test.stat=NA
                 my.df=1
                 my.mult.df=NA
                 my.resid.df=the.resid.df-my.y.levels+1
-                my.p.val=NA
+                my.p.val=as.numeric(my.nested.table[my.i,11][[1]][k,4])
 
-                my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,my.mult.df,my.resid.df,p.adjust(my.p.val,adjustment))
+                my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,my.mult.df,my.resid.df,my.p.val)
                 my.line.var=my.line.var+1
               }
             }
@@ -1031,9 +1043,9 @@ quick.reg = function(my.model,
                 my.df=NA
                 my.mult.df=my.y.levels
                 my.resid.df=the.resid.df-my.y.levels+1
-                my.p.val=pf(as.numeric(my.f.val),as.numeric(my.mult.df),as.numeric(my.resid.df),lower.tail = F)
+                my.p.val=as.numeric(my.nested.table[my.i,9][[1]][k,4])
 
-                my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,my.mult.df,my.resid.df,p.adjust(my.p.val,adjustment))
+                my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,my.mult.df,my.resid.df,my.p.val)
                 my.line.var=my.line.var+1
               }
             }
@@ -1054,9 +1066,9 @@ quick.reg = function(my.model,
             my.df=NA
             my.mult.df=my.y.levels
             my.resid.df=the.resid.df-my.y.levels+1
-            my.p.val=pf(as.numeric(my.f.val),as.numeric(my.mult.df),as.numeric(my.resid.df),lower.tail = F)
+            my.p.val=as.numeric(my.nested.table[my.i,8][[1]][k,4])
 
-            my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,my.mult.df,my.resid.df,p.adjust(my.p.val,adjustment))
+            my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,my.mult.df,my.resid.df,my.p.val)
             my.line.var=my.line.var+1
           }
         }
@@ -1098,9 +1110,9 @@ quick.reg = function(my.model,
                 my.df=1
                 my.mult.df=NA
                 my.resid.df=the.resid.df-my.y.levels+1
-                my.p.val=NA
+                my.p.val=my.latent.contrasts.table[[other.manova.grep]][[y]][k,4]
 
-                my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,my.mult.df,my.resid.df,p.adjust(my.p.val,adjustment))
+                my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,my.mult.df,my.resid.df,my.p.val)
                 my.line.var=my.line.var+1
               }
             }
