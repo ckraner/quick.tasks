@@ -37,7 +37,11 @@ quick.part.cont=function(my.nested.table,SS.type=2,adjustment="bonferroni",abbre
       #### If should, make contrast
       my.new.df=my.nested.table[p,3][[1]]$model
       my.MSE=mean(my.nested.table[p,3][[1]]$residuals^2)
+      if(SS.type==3){
       the.resid.SS=sum(diag(my.nested.table[p,4][[1]][[2]]))
+      }else{
+        the.resid.SS=sum(diag(my.nested.table[p,4][[1]][[2]][[1]]))
+      }
       the.resid.df=my.nested.table[p,3][[1]]$df.residual
 
       if(latent.cont){
@@ -736,7 +740,7 @@ quick.reg = function(my.model,
                      part.eta = F,
                      VIF = F,
                      myDF = my.found.df,
-                     SS.type = 3,
+                     SS.type = 2,
                      abbrev.length = ab.len,
                      pix.int = T,
                      pix.method = "html",
@@ -775,6 +779,21 @@ quick.reg = function(my.model,
     stop(paste("No data frame found"))
   }
 
+  #### for expansion
+  if (!VIF & !part.eta) {
+    v.p.len = 8
+    v.p.rep = 0
+  } else if (!VIF) {
+    v.p.len = 9
+    v.p.rep = 1
+  } else if (!part.eta) {
+    v.p.len = 9
+    v.p.rep = 1
+  } else{
+    v.p.len = 10
+    v.p.rep = 2
+  }
+
   #### Make factor list ####
   #### Use car::Anova to get SS Type 3
   if (type == "lm") {
@@ -811,91 +830,10 @@ quick.reg = function(my.model,
     #### Begin MANOVA ####
     #### Inits ####
 
-    #### for expansion
-    if (!VIF & !part.eta) {
-      v.p.len = 8
-      v.p.rep = 0
-    } else if (!VIF) {
-      v.p.len = 9
-      v.p.rep = 1
-    } else if (!part.eta) {
-      v.p.len = 9
-      v.p.rep = 1
-    } else{
-      v.p.len = 10
-      v.p.rep = 2
-    }
 
-
-    #### Split and get formulas ####
     my.envir=environment()
-    my.formula.lists=quick.tasks::quick.formula(my.model,my.envir)
 
-
-
-    #### New DF and Number (levels) of dependent
-    my.new.df=my.model$model
-    my.y.levels=dim(my.model$model[[1]])[2]
-
-
-    #### Run all models ####
-    #### Since it is now lapply, can make it parallel easily later
-    attach(my.new.df)
-    my.null.model=manova(my.formula.lists[[1]])
-    my.null.model.SSCP=c(car::Anova(my.null.model,type=3)$SSP,car::Anova(my.null.model,type=3)$SSPE)
-    my.pre.models=lapply(my.formula.lists[[2]],manova)
-    my.pre.models.SSCP=lapply(my.pre.models,quick.SSCP)
-    my.full.models=lapply(my.formula.lists[[3]],manova)
-    my.full.models.SSCP=lapply(my.full.models,quick.SSCP)
-    detach(my.new.df)
-
-
-    #### Make nested data frame ####
-    ## variable (str) | formula (str) | model
-    my.nested.table=NULL
-    my.nested.table=list("null",my.formula.lists[[1]],my.null.model,my.null.model.SSCP,NA,NA,NA)
-
-    model.names=names(my.model$model)[-1]
-
-    for(v in 1:length(model.names)){
-      my.nested.table=rbind(my.nested.table,list(model.names[v],my.formula.lists[[2]][[v]],
-                                                 my.pre.models[[v]],my.pre.models.SSCP[[v]],
-                                                 {my.null.model$df.residual-my.pre.models[[v]]$df.residual},
-                                                 NA,NA))
-      my.nested.table=rbind(my.nested.table,list(model.names[v],my.formula.lists[[3]][[v]],
-                                                 my.full.models[[v]],my.full.models.SSCP[[v]],
-                                                 {my.null.model$df.residual-my.full.models[[v]]$df.residual},
-                                                 my.full.models.SSCP[[v]][[1]][{length(my.full.models.SSCP[[v]][[1]])}],
-                                                 {my.null.model$df.residual-my.full.models[[v]]$df.residual}-{my.null.model$df.residual-my.pre.models[[v]]$df.residual}))
-
-    }
-
-    colnames(my.nested.table)=c("Variable","Formula","Model","SSCP","df","Change","df Change")
-
-    #### Create latent variables ####
-    if(show.latent){
-
-
-      latent.SSCP=lapply(my.nested.table[-1,4],quick.latent)
-      latent.change=NA
-      for(S in 2:{length(latent.SSCP)+1}){
-        if(S %% 2 == 0){
-          latent.change=c(latent.change,NA)
-        }else{
-          latent.change=c(latent.change,as.list(latent.SSCP[[S-1]][[1]][{length(latent.SSCP[[S-1]][[1]])}]))
-        }
-      }
-
-      #### Add to table
-      my.nested.table=cbind(my.nested.table,c(NA,latent.SSCP),latent.change)
-
-      colnames(my.nested.table)=c("Variable","Formula","Model","SSCP","df","Change","df Change","Latent SSCP","Latent Change")
-    }
-
-    #### Get Contrasts ####
-    if(show.contrasts){
-      my.nested.table=quick.part.cont(my.nested.table,latent.cont=ifelse(show.latent,T,F))
-    }
+    my.nested.table=quick.SSCP(my.model, myDF, SS.type, show.contrasts, show.latent,my.envir)
     #### Get treatment ####
     treat.model=my.nested.table[dim(my.nested.table)[1],4]
 
@@ -936,17 +874,27 @@ quick.reg = function(my.model,
 
     #### Get residuals ####
     #### Regular residuals
+    if(SS.type==3){
     the.resid=sum(diag(treat.model[[1]][[2]]))
+    #### Partial residuals
+    part.resid.total=treat.model[[1]][[2]]
+    }else{
+      the.resid=sum(diag(treat.model[[1]][[2]][[1]]))
+      part.resid.total=treat.model[[1]][[2]][[1]]
+    }
     the.resid.df=my.model$df.residual
 
 
-    #### Partial residuals
-    part.resid.total=treat.model[[1]][[2]]
+
 
 
     #### Latent totals
     if(show.latent){
+      if(SS.type==3){
       latent.part.resid.total=latent.treat.model[[1]][[2]]
+      }else{
+        latent.part.resid.total=latent.treat.model[[1]][[2]][[1]]
+      }
     }
 
     #### Get totals ####
@@ -1078,7 +1026,7 @@ quick.reg = function(my.model,
               for(k in 1:as.numeric(my.nested.table[my.i,7])){
                 my.name=my.nested.table[my.i,9][[1]][k,1]
                 my.f.val=as.numeric(my.nested.table[my.i,9][[1]][k,2])
-                my.SS=as.numeric(my.nested.table[my.i,9][[1]][k,2])
+                my.SS=as.numeric(my.nested.table[my.i,9][[1]][k,3])
                 my.test.stat=NA
                 my.df=NA
                 my.mult.df=my.y.levels
@@ -1101,7 +1049,7 @@ quick.reg = function(my.model,
           for(k in 1:as.numeric(my.nested.table[my.i,7])){
             my.name=my.nested.table[my.i,8][[1]][k,1]
             my.f.val=as.numeric(my.nested.table[my.i,8][[1]][k,2])
-            my.SS=as.numeric(my.nested.table[my.i,8][[1]][k,2])
+            my.SS=as.numeric(my.nested.table[my.i,8][[1]][k,3])
             my.test.stat=NA
             my.df=NA
             my.mult.df=my.y.levels

@@ -280,10 +280,14 @@ quick.formula=function(my.model,my.envir){
 #' @param SSCP.list Model to be used
 #' @return List of lists with 3 pieces: null model, pre models, and full models
 #' @keywords Explore
-quick.latent=function(SSCP.list){
+quick.latent=function(SSCP.list,SS.type=2){
   library(purrr)
   temp.latent.SSCP.eigen=purrr::map(SSCP.list[[1]],quick.latent.reduce)
+  if(SS.type==3){
   temp.latent.SSCP.error=quick.latent.reduce(SSCP.list[[2]])
+  }else{
+    temp.latent.SSCP.error=quick.latent.reduce(SSCP.list[[2]][[1]])
+  }
   temp.latent=list(temp.latent.SSCP.eigen,temp.latent.SSCP.error)
   return(temp.latent)
 }
@@ -318,11 +322,16 @@ quick.latent.reduce=function(my.part){
 #' @param my.model Model to be used
 #' @return List of lists with 3 pieces: null model, pre models, and full models
 #' @keywords Explore
-quick.SSCP=function(my.summary){
+quick.SSP.matrix=function(my.summary,SS.type){
+  if(SS.type==3){
   library(car)
   car.sum=car::Anova(my.summary,type=3)
-  car.sum.SSCP=list(car.sum$SSP,car.sum$SSPE)
-  return(car.sum.SSCP)
+  sum.SSCP=list(car.sum$SSP,car.sum$SSPE)
+  }else{
+    sum.sum=summary(my.summary,intercept=T)
+    sum.SSCP=list(sum.sum$SS[-length(sum.sum$SS)],sum.sum$SS[length(sum.sum$SS)])
+  }
+  return(sum.SSCP)
 }
 
 #' Formula Dissecter for later...does ALL types.
