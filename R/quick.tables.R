@@ -134,15 +134,15 @@ quick.part.cont=function(my.nested.table,SS.type=2,adjustment="bonferroni",abbre
       my.contrasts.names=NULL
       for(j in 1:{num.of.contrasts}){
         if(j==1){
-          my.contrasts.names=as.list(abbreviate(paste(trimws(level.names[[1]]),"-",trimws(level.names[[j+1]]))),abbrev.length)
+          my.contrasts.names=as.list(paste(trimws(level.names[[1]]),"-",trimws(level.names[[j+1]])))
         }else{
-          my.contrasts.names=c(my.contrasts.names,abbreviate(paste(trimws(level.names[[1]]),"-",trimws(level.names[[j+1]]))),abbrev.length)
+          my.contrasts.names=c(my.contrasts.names,paste(trimws(level.names[[1]]),"-",trimws(level.names[[j+1]])))
         }
       }
 
 
       #### Add to table
-      my.contrasts.4.table=cbind(as.matrix(unlist(my.contrasts.names)),as.numeric(as.matrix(unlist(my.contrasts.F))),as.matrix(as.numeric(unlist(my.contrasts.SSC))))
+      my.contrasts.4.table=cbind(as.matrix(unlist(my.contrasts.names)),as.matrix(unlist(my.contrasts.F)),as.matrix(unlist(my.contrasts.SSC)))
       contr.grep=grep("^Contrasts$",colnames(my.nested.table2))
       my.nested.table2[p,contr.grep]=list(my.contrasts.4.table)
 
@@ -892,7 +892,10 @@ quick.reg = function(my.model,
       colnames(my.nested.table)=c("Variable","Formula","Model","SSCP","df","Change","df Change","Latent SSCP","Latent Change")
     }
 
-
+    #### Get Contrasts ####
+    if(show.contrasts){
+      my.nested.table=quick.part.cont(my.nested.table,latent.cont=ifelse(show.latent,T,F))
+    }
     #### Get treatment ####
     treat.model=my.nested.table[dim(my.nested.table)[1],4]
 
@@ -982,7 +985,7 @@ quick.reg = function(my.model,
       my.treat.err=solve(my.SSP.err)%*%treat.model[[1]][[1]][[i]]
       my.test.stat=quick.m.test(my.treat.err,test.stat)
       my.SS=sum(diag(treat.model[[1]][[1]][[i]]))
-      my.df=my.y.levels*ifelse(my.i==1,as.numeric(my.nested.table[my.i,5]),1)
+      my.df=my.y.levels*ifelse(my.i!=1,as.numeric(my.nested.table[my.i,7]),1)
       my.resid.df=ifelse(my.i==1,{my.y.levels*the.resid.df},min({the.resid.df*as.numeric(my.nested.table[my.i,5])-as.numeric(my.nested.table[my.i,5])},my.y.levels*the.resid.df-as.numeric(my.nested.table[my.i,5])))
       my.f.val={my.SS/my.df}/{the.resid/the.resid.df}
       my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
@@ -1048,12 +1051,12 @@ quick.reg = function(my.model,
           #### Put in latent contrasts ####
           if(show.contrasts & show.latent & my.i!=1){
             #### Check length
-            if({my.SSP.treat.df[my.i]>1}){
-              other.manova.grep=grep(paste("^",names(my.SSP.treat)[my.i],"$",sep=""),names(my.model$xlevels))
-              for(k in 1:{my.SSP.treat.df[my.i]}){
-                my.name=my.contrasts.table[[other.manova.grep]][k,1]
-                my.f.val=my.latent.contrasts.table[[other.manova.grep]][[my.i-1]][k,2]
-                my.SS=my.latent.contrasts.table[[other.manova.grep]][[my.i-1]][k,3]
+            if({!is.na(my.nested.table[my.i,11])}){
+              #other.manova.grep=grep(paste("^",names(my.SSP.treat)[my.i],"$",sep=""),names(my.model$xlevels))
+              for(k in 1:{my.nested.table[my.i,7]}){
+                my.name=my.nested.table[my.i,11][[1]][k,1]
+                my.f.val=as.numeric(my.nested.table[my.i,11][[1]][k,2])
+                my.SS=as.numeric(my.nested.table[my.i,11][[1]][k,2])
                 my.test.stat=NA
                 my.df=1
                 my.mult.df=NA
@@ -1068,14 +1071,14 @@ quick.reg = function(my.model,
 
           #### Put in contrasts ####
           #### Not right. Don't have it decomposed this way.
-          if(show.contrasts & !show.latent & F){
+          if(show.contrasts & !show.latent & my.i!=1){
             #### Check length
-            if({my.SSP.treat.df[my.i]>1}){
-              other.manova.grep=grep(paste("^",names(my.SSP.treat)[my.i],"$",sep=""),names(my.model$xlevels))
-              for(k in 1:{my.SSP.treat.df[my.i]}){
-                my.name=my.contrasts.table[[other.manova.grep]][k,1]
-                my.f.val=my.contrasts.table[[other.manova.grep]][k,2]
-                my.SS=my.contrasts.table[[other.manova.grep]][k,3]
+            if(!is.na(my.nested.table[my.i,9])){
+              #other.manova.grep=grep(paste("^",names(my.SSP.treat)[my.i],"$",sep=""),names(my.model$xlevels))
+              for(k in 1:as.numeric(my.nested.table[my.i,7])){
+                my.name=my.nested.table[my.i,9][[1]][k,1]
+                my.f.val=as.numeric(my.nested.table[my.i,9][[1]][k,2])
+                my.SS=as.numeric(my.nested.table[my.i,9][[1]][k,2])
                 my.test.stat=NA
                 my.df=NA
                 my.mult.df=my.y.levels
@@ -1093,12 +1096,12 @@ quick.reg = function(my.model,
       #### Put in contrasts ####
       if(show.contrasts & !show.latent & !show.y.contrasts){
         #### Check length
-        if({my.SSP.treat.df[my.i]>1}){
-          other.manova.grep=grep(paste("^",names(my.SSP.treat)[my.i],"$",sep=""),names(my.model$xlevels))
-          for(k in 1:{my.SSP.treat.df[my.i]}){
-            my.name=my.contrasts.table[[other.manova.grep]][k,1]
-            my.f.val=my.contrasts.table[[other.manova.grep]][k,2]
-            my.SS=as.numeric(my.contrasts.table[[other.manova.grep]][k,3])
+        if(!is.na(my.nested.table[my.i,8])){
+          #other.manova.grep=grep(paste("^",names(my.SSP.treat)[my.i],"$",sep=""),names(my.model$xlevels))
+          for(k in 1:as.numeric(my.nested.table[my.i,7])){
+            my.name=my.nested.table[my.i,8][[1]][k,1]
+            my.f.val=as.numeric(my.nested.table[my.i,8][[1]][k,2])
+            my.SS=as.numeric(my.nested.table[my.i,8][[1]][k,2])
             my.test.stat=NA
             my.df=NA
             my.mult.df=my.y.levels
@@ -1163,7 +1166,7 @@ quick.reg = function(my.model,
       if(my.i==1){
         my.test.stat=quick.m.test(part.treat.total,test.stat)
         my.SS=as.numeric(treat.total)
-        my.df=as.numeric(treat.total.df)
+        my.df=my.y.levels*as.numeric(treat.total.df)
         #### Should really be a min statement, but for later...
         my.resid.df=my.y.levels*as.numeric(the.resid.df)
         my.f.val={my.SS/my.df}/{as.numeric(the.resid.SS)/the.resid.df}
@@ -1192,9 +1195,9 @@ quick.reg = function(my.model,
               #### Show latent treatments (ANOVAs)
               #### Need to change latents to type II
               my.SS=sum(weighted.residuals(my.null.model)[,b]^2)-sum(weighted.residuals(my.model)[,b]^2)
-              my.df=my.SSP.treat.change.df/my.y.levels
+              my.df=as.numeric(treat.total.df)
               #### Should really be a min statement, but for later...
-              my.resid.df=my.SSP.err.df-my.df
+              my.resid.df=the.resid.df-my.df
               my.f.val={my.SS/my.df}/{my.latent.SSP.err[y,y]/my.resid.df}
               my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
               my.manova.table[my.line.var,]=c(NA,NA,my.f.val,my.SS,my.df,NA,{my.resid.df},my.p.val)
@@ -1213,7 +1216,7 @@ quick.reg = function(my.model,
           for(b in 1:{my.y.levels}){
             my.name=paste(ifelse(real.names,my.dv.rownames[b],b),"|Treatment",sep="")
             my.SS=as.numeric(part.treat.total[b])
-            my.df=treat.df/my.y.levels
+            my.df=as.numeric(treat.total.df)
             #### Should really be a min statement, but for later...
             my.resid.df=the.resid.df-my.df
             my.f.val={my.SS/my.df}/{as.numeric(latent.part.resid.total[b])/the.resid.df}
@@ -1226,7 +1229,7 @@ quick.reg = function(my.model,
     }
 
     #### Put in residuals, total change, total ss ####
-    my.manova.table[my.line.var,]=c("Total Change",NA,NA,as.numeric(treat.total),"*","*",NA,NA,rep(NA,v.p.rep))
+    my.manova.table[my.line.var,]=c("Total Change",NA,NA,as.numeric(treat.total),treat.total.df,{my.y.levels*treat.total.df},NA,NA,rep(NA,v.p.rep))
     my.line.var=my.line.var+1
     my.manova.table[my.line.var,]=c("Residuals",NA,NA,the.resid,the.resid.df,my.y.levels*the.resid.df,NA,NA,rep(NA,v.p.rep))
     my.line.var=my.line.var+1
@@ -1246,65 +1249,66 @@ quick.reg = function(my.model,
         my.line.var=my.line.var+1
       }
     }
-    my.manova.table[my.line.var,]=c("Total",NA,NA,the.total,the.total.df,my.y.levels*the.total.change.df,NA,NA,rep(NA,v.p.rep))
+    my.manova.table[my.line.var,]=c("Total",NA,NA,the.total,the.total.change.df+1,my.y.levels*the.total.change.df+2,NA,NA,rep(NA,v.p.rep))
 
+    quick.table(my.manova.table,"manova",test=test.stat,SS.type = SS.type, abbrev.length = abbrev.length)
+#
+#     #### Table inits ####
+#     for(i in 2:dim(my.manova.table)[2]){
+#       my.manova.table[[i]]=as.numeric(my.manova.table[[i]])
+#     }
+#     tmp.change=0
+#     if(show.latent & show.y.contrasts){
+#       tmp.change=4
+#     }else if(show.latent & !show.y.contrasts){
+#       tmp.change=2
+#     }else if(!show.latent & show.y.contrasts){
+#       tmp.change=2
+#     }
+#
+#     #### Make Dusted table ####
+#     options(pixie_interactive = pix.int,
+#             pixie_na_string = "")
+#     my.dust=pixiedust::dust(my.manova.table)%>%
+#       sprinkle_na_string()%>%
+#       sprinkle_print_method(pix.method)%>%
+#       sprinkle_border(cols=1,rows=1:my.line.var,border="left")%>%
+#       sprinkle_border(cols={8+v.p.rep},rows=1:my.line.var,border="right")%>%
+#       sprinkle_border(rows=my.line.var,boder="bottom")%>%
+#       sprinkle_border(rows=my.line.var-{2+tmp.change}+1,border="top")%>%
+#       sprinkle_border(cols=1,border="left",part="head")%>%
+#       sprinkle_border(cols={8+v.p.rep},border="right",part="head")%>%
+#       sprinkle_border(rows=1,border=c("top","bottom"),part="head")%>%
+#       sprinkle_border(rows={1+ifelse(show.intercepts,my.y.levels,0)},border="bottom")%>%
+#       sprinkle_border(rows={ifelse(show.y.contrasts,my.y.levels+1,1)+ifelse(show.latent,my.y.levels+1,1)+
+#           ifelse(show.intercepts,my.y.levels,0)},
+#           border="bottom")%>%
+#       sprinkle_round(cols=2:v.p.len,round=3)%>%
+#       sprinkle_colnames("Variable",paste(test.stat, "<br /> Test <br /> Statistic",sep=""),
+#                         "F-Value",paste("Type II <br /> Sums of <br /> Squares",sep=""),"dF",
+#                         "Mult <br /> dF","Resid <br /> dF","P-value")%>%
+#       sprinkle_align(rows=1,halign="center",part="head")%>%
+#       sprinkle_pad(rows=1:{my.line.var},pad=5)%>%
+#       sprinkle(cols = "p.val", fn = quote(pvalString(
+#         value, digits = 3, format = "default"
+#       )))%>%
+#       sprinkle_border(rows={1+ifelse(show.intercepts,my.y.levels,0)},border="bottom")
+#
+#     ##### Make glance stats ####
+#     if(do.glance){
+#       my_glance_stats=as.data.frame(matrix(ncol=v.p.len,nrow=1))
+#       my_glance_stats[1,]=c(paste(ifelse(dim(my.new.df)[1]==dim(myDF)[1],"Data have same number of rows <br />",paste({dim(myDF)[1]-dim(my.new.df)[1]}," cases deleted due to missingness <br />")),"Method: QR decomposition",if(show.contrasts){paste(" <br />Adjustment: ", adjustment,sep="")},if(show.latent){paste(" <br /> Latent Contrasts")}),rep(NA,{7+v.p.rep}))
+#       my.dust=pixiedust::redust(my.dust,my_glance_stats,part="foot")%>%
+#         sprinkle(merge=T,halign="center",part="foot")
+#     }
 
-    #### Table inits ####
-    for(i in 2:dim(my.manova.table)[2]){
-      my.manova.table[[i]]=as.numeric(my.manova.table[[i]])
-    }
-    tmp.change=0
-    if(show.latent & show.y.contrasts){
-      tmp.change=4
-    }else if(show.latent & !show.y.contrasts){
-      tmp.change=2
-    }else if(!show.latent & show.y.contrasts){
-      tmp.change=2
-    }
-
-    #### Make Dusted table ####
-    options(pixie_interactive = pix.int,
-            pixie_na_string = "")
-    my.dust=pixiedust::dust(my.manova.table)%>%
-      sprinkle_na_string()%>%
-      sprinkle_print_method(pix.method)%>%
-      sprinkle_border(cols=1,rows=1:my.line.var,border="left")%>%
-      sprinkle_border(cols={8+v.p.rep},rows=1:my.line.var,border="right")%>%
-      sprinkle_border(rows=my.line.var,boder="bottom")%>%
-      sprinkle_border(rows=my.line.var-{2+tmp.change}+1,border="top")%>%
-      sprinkle_border(cols=1,border="left",part="head")%>%
-      sprinkle_border(cols={8+v.p.rep},border="right",part="head")%>%
-      sprinkle_border(rows=1,border=c("top","bottom"),part="head")%>%
-      sprinkle_border(rows={1+ifelse(show.intercepts,my.y.levels,0)},border="bottom")%>%
-      sprinkle_border(rows={ifelse(show.y.contrasts,my.y.levels+1,1)+ifelse(show.latent,my.y.levels+1,1)+
-          ifelse(show.intercepts,my.y.levels,0)},
-          border="bottom")%>%
-      sprinkle_round(cols=2:v.p.len,round=3)%>%
-      sprinkle_colnames("Variable",paste(test.stat, "<br /> Test <br /> Statistic",sep=""),
-                        "F-Value",paste("Type II <br /> Sums of <br /> Squares",sep=""),"dF",
-                        "Mult <br /> dF","Resid <br /> dF","P-value")%>%
-      sprinkle_align(rows=1,halign="center",part="head")%>%
-      sprinkle_pad(rows=1:{my.line.var},pad=5)%>%
-      sprinkle(cols = "p.val", fn = quote(pvalString(
-        value, digits = 3, format = "default"
-      )))%>%
-      sprinkle_border(rows={1+ifelse(show.intercepts,my.y.levels,0)},border="bottom")
-
-    ##### Make glance stats ####
-    if(do.glance){
-      my_glance_stats=as.data.frame(matrix(ncol=v.p.len,nrow=1))
-      my_glance_stats[1,]=c(paste(ifelse(dim(my.new.df)[1]==dim(myDF)[1],"Data have same number of rows <br />",paste({dim(myDF)[1]-dim(my.new.df)[1]}," cases deleted due to missingness <br />")),"Method: QR decomposition",if(show.contrasts){paste(" <br />Adjustment: ", adjustment,sep="")},if(show.latent){paste(" <br /> Latent Contrasts")}),rep(NA,{7+v.p.rep}))
-      my.dust=pixiedust::redust(my.dust,my_glance_stats,part="foot")%>%
-        sprinkle(merge=T,halign="center",part="foot")
-    }
-
-
-    if (pix.int) {
-      return(my.dust)
-    } else{
-      my.dust.print = print(my.dust, quote = F)[1]
-      return(my.dust.print)
-    }
+      return()
+    # if (pix.int) {
+    #   return(my.dust)
+    # } else{
+    #   my.dust.print = print(my.dust, quote = F)[1]
+    #   return(my.dust.print)
+    # }
 
     #### ETA-SQ Stuff to finish.... ####
     # #### Make eta-sq

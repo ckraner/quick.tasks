@@ -130,11 +130,11 @@ quick.table=function(my.table,
       #### Make th, add id="change"
       my.line=paste("<tr id=\"int\"><th>",my.table[i,1],"</th>")
     }else if(i==treat.loc | i==total.loc){
-      my.line=paste("<tr id=\"change\"><th align=\"left\">",my.table[i,1],"</th>")
+      my.line=paste("<tr id=\"change\"><td align=\"left\"><b>",my.table[i,1],"</b></td>")
     }else if(i==1 & i==int.loc){
       my.line=paste("<tr id=\"int\"><td>",my.table[i,1],"</td>")
     }else if(i>total.loc){
-      my.line=paste("<tr><th align=\"left\">",my.table[i,1],"</th>")
+      my.line=paste("<tr><td align=\"left\"><b>",my.table[i,1],"</b></td>")
     }else{
       my.line=paste("<tr><td>",my.table[i,1],"</td>")
     }
