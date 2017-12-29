@@ -15,7 +15,7 @@ quick.table=function(my.table,
                      test.stat="Pillai",
                      print.type="full",
                      the.caption=NULL,
-                     the.footer=NULL,
+                     the.footer=NA,
                      abbrev.length=ab.len,
                      SS.type=2,
                      new.rownames.int=NULL,
@@ -23,7 +23,10 @@ quick.table=function(my.table,
                      swap.na=NULL,
                      round.num=2,
                      col.names=my.colnames,
-                     print.now=T){
+                     print.now=T,
+                     show.footer=T,
+                     make.red=NULL,
+                     make.black=NULL){
 
   #### Inits ####
 
@@ -34,10 +37,15 @@ quick.table=function(my.table,
     ab.len=15
   }
 
+  if(type=="manova" | type=="stats::manova"){
+    attr(my.table,"quick.test.stat")=test.stat
+  }
   attr(my.table,"quick.print.type")=print.type
   attr(my.table,"quick.abbrev.length")=abbrev.length
   attr(my.table,"quick.round")=round.num
   attr(my.table,"quick.type")=type
+  attr(my.table,"quick.footer")=the.footer
+  attr(my.table,"quick.SS.type")=SS.type
   attr(my.table,"class")=c(attr(my.table,"class"),"quick.table")
 
 
@@ -48,6 +56,8 @@ quick.table=function(my.table,
                   paste("Type ",ifelse(SS.type==2,"II","III"),"<br />Sums of<br />Squares"),
                   "dF","Mult<br />dF","Resid<br />dF","Pr(>F)")
   }
+  attr(my.table,"quick.col.names")=col.names
+
 
   #### Find Intercept, Treatment, Total Change Locations ####
   int.loc=grep("Intercept",my.table[[1]])
@@ -119,15 +129,55 @@ quick.table=function(my.table,
     if(i==1 & my.table2[1,1]=="Intercept Change"){
       #### GLM stuff
       #### Make th, add id="change"
+      if(i %in% make.red | i %in% make.black){
+        if(i %in% make.red){
+          my.line=paste("<tr id=\"red\"><th>",my.table2[i,1],"</th>")
+        }else{
+          my.line=paste("<tr id=\"black\"><th>",my.table2[i,1],"</th>")
+        }
+      }else{
       my.line=paste("<tr id=\"int\"><th>",my.table2[i,1],"</th>")
+      }
     }else if(i==treat.loc | i==total.loc){
+      if(i %in% make.red | i %in% make.black){
+        if(i %in% make.red){
+          my.line=paste("<tr id=\"red\"><td align=\"left\"><b>",my.table2[i,1],"</b></td>")
+        }else{
+          my.line=paste("<tr id=\"black\"><td align=\"left\"><b>",my.table2[i,1],"</b></td>")
+        }
+      }else{
       my.line=paste("<tr id=\"change\"><td align=\"left\"><b>",my.table2[i,1],"</b></td>")
+      }
     }else if(i==1 & i==int.loc){
+      if(i %in% make.red | i %in% make.black){
+        if(i %in% make.red){
+          my.line=paste("<tr id=\"red\"><td>",my.table2[i,1],"</td>")
+        }else{
+          my.line=paste("<tr id=\"black\"><td>",my.table2[i,1],"</td>")
+        }
+      }else{
       my.line=paste("<tr id=\"int\"><td>",my.table2[i,1],"</td>")
+      }
     }else if(i>total.loc){
-      my.line=paste("<tr><td align=\"left\"><b>",my.table2[i,1],"</b></td>")
+      if(i %in% make.red | i %in% make.black){
+        if(i %in% make.red){
+          my.line=paste("<tr id=\"red\"><td><b>",my.table2[i,1],"</b></td>")
+        }else{
+          my.line=paste("<tr id=\"black\"><td><b>",my.table2[i,1],"</b></td>")
+        }
+      }else{
+        my.line=paste("<tr><td><b>",my.table2[i,1],"</b></td>")
+      }
     }else{
+      if(i %in% make.red | i %in% make.black){
+        if(i %in% make.red){
+          my.line=paste("<tr id=\"red\"><td>",my.table2[i,1],"</td>")
+        }else{
+          my.line=paste("<tr id=\"black\"><td>",my.table2[i,1],"</td>")
+        }
+      }else{
       my.line=paste("<tr><td>",my.table2[i,1],"</td>")
+      }
     }
 
     #### Rest of row
@@ -147,8 +197,10 @@ quick.table=function(my.table,
 
   #### End table
   my.html.table=paste(my.html.table,"</table>")
+
+
   #### Put in custom bottom
-  if(!is.null(the.footer)){
+  if(!is.na(the.footer) & show.footer){
     my.html.table=paste(my.html.table,"<p align=\"center\">",the.footer,"</p>")
   }
   #### Put in end
@@ -169,16 +221,39 @@ quick.table=function(my.table,
   return(my.table)
 }
 
-
+#' Table Check
+#'
+#' Checks to make sure that table and html table are the same before update
+#'
+#' @param q.tab quick.table
+#' @return Logical of whether all matches
+#' @keywords Explore
 quick.table.check=function(q.tab){
-
-
 
   #### Turn HTML into something easily useable
   row.check=attr(q.tab,"quick.rows")
   row.split=strsplit(row.check,"</tr>")
   col.split=lapply(row.split,strsplit,"</td>")
   col.split=lapply(col.split[[1]],strsplit,"<td>")
+
+  my.comp.table=NULL
+  for(i in 1:length(col.split)){
+    my.temp.row=unlist(col.split[[i]])
+    my.temp.row=my.temp.row[my.temp.row != " "]
+    if(length(grep("<b>",my.temp.row[1]))==0){
+    my.temp.row=my.temp.row[-1]
+    }else{
+      my.temp.row[1]=strsplit(my.temp.row[1],"<b>")[[1]][2]
+      my.temp.row[1]=strsplit(my.temp.row[1],"</b>")[[1]][1]
+    }
+    my.temp.row=trimws(my.temp.row)
+
+    if(i==1){
+      my.comp.table=my.temp.row
+    }else{
+      my.comp.table=rbind(my.comp.table,my.temp.row)
+    }
+  }
 
   #### Get round number and round table
   round.num=attr(q.tab,"quick.round")
@@ -192,5 +267,65 @@ quick.table.check=function(q.tab){
   p.row=grep("p.val",colnames(q.tab))
   q.tab=quick.p.val(q.tab,p.row)
   #### Check against values in table
+  my.map.table=NULL
+  for(i in 2:dim(q.tab)[2]){
+    if(i==2){
+      my.map.table=map2(q.tab[[i]],my.comp.table[,i],quick.eq.check)
+    }else{
+      my.map.table=cbind(my.map.table,map2(q.tab[[i]],my.comp.table[,i],quick.eq.check))
+    }
+  }
+  no.false=T
+  for(i in 1:dim(my.map.table)[2]){
+  if(length(my.map.table[which(my.map.table[,i]==F),])>0){
+    no.false=F
+  }
+  }
+
+  return(no.false)
+}
+
+#' Table Update
+#'
+#' Update unchanged table
+#'
+#' @param q.tab quick.table
+#' @return Logical of whether all matches
+#' @export
+#' @keywords Explore
+quick.table.update=function(q.tab,make.red=NULL,make.black=NULL,the.caption=my.caption,show.footer=T,new.rownames.int=NULL,
+                            new.rownames.treat=NULL,swap.na=NULL,the.round=my.round,print.type="full",
+                            print.now=T,do.return=F){
+  my.check=quick.table.check(q.tab)
+  if(my.check){
+    my.caption=attr(q.tab,"quick.caption")
+    my.round=attr(q.tab,"quick.round")
+    my.type=attr(q.tab,"quick.type")
+    my.ab.len=attr(q.tab,"abbrev.length")
+    my.SS.type=attr(q.tab,"quick.SS.type")
+    if(my.type=="manova" | my.type=="stats::manova"){
+    my.test.stat=attr(q.tab,"quick.test.stat")
+    }else{
+      my.test.stat=NULL
+    }
+    new.q.tab=quick.table(q.tab,type,test.stat=my.test.stat,print.type=print.type,
+               the.caption=the.caption,the.footer=the.footer,
+               abbrev.length=my.ab.len,
+               SS.type=my.SS.type,
+               new.rownames.int=new.rownames.int,
+               new.rownames.treat=new.rownames.treat,
+               swap.na=swap.na,
+               round.num=the.round,
+               col.names=my.colnames,
+               print.now=T,
+               show.footer=show.footer,
+               make.red=make.red,
+               make.black=make.black)
+    if(do.return){
+    return(new.q.tab)
+    }
+  }else{
+    stop("This table has changed.")
+  }
 
 }

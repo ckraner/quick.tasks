@@ -4,6 +4,27 @@
 ######################## 12/2017 ###########################
 ############################################################
 
+#' Check equality
+#'
+#' Helper function to make list of null model, pre models,
+#' and full models for calculating type II SS (and eventually
+#' type III SS).
+#'
+#' @param my.model Model to be used
+#' @return List of lists with 3 pieces: null model, pre models, and full models
+#' @keywords Explore
+quick.eq.check=function(val.1,val.2){
+  if(val.2=="&nbsp;"){
+    val.2=NA
+  }
+  if(is.na(val.1) | is.na(val.2)){
+    return(is.na(val.1) & is.na(val.2))
+  }else{
+  return(val.1==val.2)
+  }
+}
+
+
 #' P-val Stuff
 #'
 #' Helper function to make list of null model, pre models,
