@@ -760,6 +760,7 @@ quick.reg = function(my.model,
                      test.stat = "Pillai",
                      my.factor = NULL,
                      do.glance=T,
+                     show.footer=T,
                      adjustment = "bonferroni",
                      show.contrasts=F,
                      show.y.contrasts=F,
@@ -1210,8 +1211,12 @@ quick.reg = function(my.model,
       }
     }
     my.manova.table[my.line.var,]=c("Total",NA,NA,the.total,the.total.change.df+1,my.y.levels*the.total.change.df+2,NA,NA,rep(NA,v.p.rep))
-
-    quick.table(my.manova.table,"manova",test=test.stat,SS.type = SS.type, abbrev.length = abbrev.length)
+    if(show.footer){
+    the.footer=paste(ifelse(dim(my.new.df)[1]==dim(myDF)[1],"Data have same number of rows <br />",paste({dim(myDF)[1]-dim(my.new.df)[1]}," cases deleted due to missingness <br />")),"Method: QR decomposition",if(show.contrasts){paste(" <br />Adjustment: ", adjustment,sep="")},if(show.latent){paste(" <br /> Latent Contrasts")})
+    }else{
+      the.footer=NULL
+    }
+    quick.table(my.manova.table,"manova",test=test.stat,SS.type = SS.type, abbrev.length = abbrev.length,the.footer = the.footer)
 #
 #     #### Table inits ####
 #     for(i in 2:dim(my.manova.table)[2]){
