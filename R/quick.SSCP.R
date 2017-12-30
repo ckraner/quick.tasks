@@ -1,14 +1,14 @@
-quick.SSCP=function(my.model, myDF, SS.type, show.contrasts, my.envir, ...){
+quick.SSCP=function(my.model, myDF, marginality, show.contrasts, my.envir, ...){
   UseMethod("quick.SSCP", my.model)
 }
-quick.SSCP.lm=function(my.model,myDF,SS.type,show.contrasts,my.envir){
+quick.SSCP.lm=function(my.model,myDF,marginality,show.contrasts,my.envir){
   my.formula.lists=quick.formula(my.model,my.envir)
 
   #### New DF and Number (levels) of dependent
   my.new.df=my.model$model
   my.y.levels=1
 }
-quick.SSCP.manova=function(my.model, myDF, SS.type, show.contrasts, show.latent, my.envir){
+quick.SSCP.manova=function(my.model, myDF, marginality, show.contrasts, show.latent, my.envir){
   #### Split and get formulas ####
 
   my.formula.lists=quick.tasks::quick.formula(my.model,my.envir)
@@ -25,16 +25,16 @@ quick.SSCP.manova=function(my.model, myDF, SS.type, show.contrasts, show.latent,
   #### Since it is now lapply, can make it parallel easily later
   attach(my.new.df)
   my.null.model=manova(my.formula.lists[[1]])
-  if(SS.type==3){
+  if(!marginality){
   my.null.model.SSCP=c(car::Anova(my.null.model,type=3)$SSP,car::Anova(my.null.model,type=3)$SSPE)
   }else{
   SSCP.temp=summary(my.null.model,intercept = T)$SS
   my.null.model.SSCP=c(SSCP.temp[-length(SSCP.temp)],SSCP.temp[length(SSCP.temp)])
   }
   my.pre.models=lapply(my.formula.lists[[2]],manova)
-  my.pre.models.SSCP=lapply(my.pre.models,quick.SSP.matrix,SS.type)
+  my.pre.models.SSCP=lapply(my.pre.models,quick.SSP.matrix,marginality)
   my.full.models=lapply(my.formula.lists[[3]],manova)
-  my.full.models.SSCP=lapply(my.full.models,quick.SSP.matrix,SS.type)
+  my.full.models.SSCP=lapply(my.full.models,quick.SSP.matrix,marginality)
   detach(my.new.df)
 
 
@@ -64,7 +64,7 @@ quick.SSCP.manova=function(my.model, myDF, SS.type, show.contrasts, show.latent,
   if(show.latent){
 
 
-    latent.SSCP=lapply(my.nested.table[-1,4],quick.latent,SS.type)
+    latent.SSCP=lapply(my.nested.table[-1,4],quick.latent,marginality)
     latent.change=NA
     for(S in 2:{length(latent.SSCP)+1}){
       if(S %% 2 == 0){

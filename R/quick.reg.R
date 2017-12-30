@@ -90,7 +90,6 @@ quick.reg.table.manova = function(my.model,
                                   part.eta = F,
                                   VIF = F,
                                   myDF = my.found.df,
-                                  SS.type = 2,
                                   abbrev.length = ab.len,
                                   pix.int = T,
                                   pix.method = "html",
@@ -111,8 +110,8 @@ quick.reg.table.manova = function(my.model,
   #### Inits ####
   my.y.levels=dim(my.model$model[[1]])[2]
   my.envir=environment()
-
-  my.nested.table=quick.SSCP(my.model, myDF, SS.type, show.contrasts, show.latent,my.envir)
+  SS.type = 2
+  my.nested.table=quick.SSCP(my.model, myDF, marginality, show.contrasts, show.latent,my.envir)
   #### Get treatment ####
   treat.model=my.nested.table[dim(my.nested.table)[1],4]
 
@@ -153,7 +152,7 @@ quick.reg.table.manova = function(my.model,
 
   #### Get residuals ####
   #### Regular residuals
-  if(SS.type==3){
+  if(!marginality){
     the.resid=sum(diag(treat.model[[1]][[2]]))
     #### Partial residuals
     part.resid.total=treat.model[[1]][[2]]
@@ -169,7 +168,7 @@ quick.reg.table.manova = function(my.model,
 
   #### Latent totals
   if(show.latent){
-    if(SS.type==3){
+    if(!marginality==3){
       latent.part.resid.total=latent.treat.model[[1]][[2]]
     }else{
       latent.part.resid.total=latent.treat.model[[1]][[2]][[1]]
@@ -482,7 +481,7 @@ quick.reg.table.manova = function(my.model,
   }else{
     the.footer=NULL
   }
-  my.html.table=quick.table(my.manova.table,"manova",test=test.stat,SS.type = SS.type, abbrev.length = abbrev.length,the.footer = the.footer)
+  my.html.table=quick.table(my.manova.table,"manova",test=test.stat,marginality=marginality, abbrev.length = abbrev.length,the.footer = the.footer)
   if(do.return){
     return(my.html.table)
   }else{
@@ -531,7 +530,7 @@ quick.reg.table.lm = function(my.model,
                               part.eta = F,
                               VIF = F,
                               myDF = my.found.df,
-                              SS.type = 2,
+                              marginality=T,
                               abbrev.length = ab.len,
                               pix.int = T,
                               pix.method = "html",
@@ -548,25 +547,27 @@ quick.reg.table.lm = function(my.model,
                               real.names=T,
                               do.return=T) {
 
+  SS.type = 2
   my.envir=environment()
 
-  my.nested.table=quick.SSCP(my.model, myDF, SS.type, show.contrasts, show.latent,my.envir)
+  my.nested.table=quick.SSCP(my.model, myDF, marginality, show.contrasts, show.latent,my.envir)
   #### ANOVA TABLES ####
   my.summary = summary(my.model)
   my.coefficients = my.summary$coefficients
   my.coefficients = as.data.frame(my.coefficients)
-  if (type == "ord" & length(my.model$model) == 1) {
-    my.III.summary = NULL
-    the.length = length(my.model$y.levels) - 1
-  } else{
-    my.III.summary = car::Anova(my.model, type = SS.type)
+
+    if(!marginality){
+    my.III.summary = car::Anova(my.model, type = 3)
+    }else{
+      my.III.summary = car::Anova(my.model, type = 2)
+    }
 
     if (type == "glm" & is.null(my.factor)) {
       the.length = dim(my.III.summary)[1] + 1
     } else{
       the.length = dim(my.III.summary)[1]
     }
-  }
+
 
   #### Calculate total SS ####
   my.total = sum(my.III.summary$`Sum Sq`[2:length(my.III.summary$`Sum Sq`)])
