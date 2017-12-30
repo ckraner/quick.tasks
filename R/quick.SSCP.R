@@ -1,7 +1,13 @@
 quick.SSCP=function(my.model, myDF, SS.type, show.contrasts, my.envir, ...){
   UseMethod("quick.SSCP", my.model)
 }
+quick.SSCP.lm=function(my.model,myDF,SS.type,show.contrasts,my.envir){
+  my.formula.lists=quick.formula(my.model,my.envir)
 
+  #### New DF and Number (levels) of dependent
+  my.new.df=my.model$model
+  my.y.levels=1
+}
 quick.SSCP.manova=function(my.model, myDF, SS.type, show.contrasts, show.latent, my.envir){
   #### Split and get formulas ####
 

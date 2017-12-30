@@ -766,7 +766,8 @@ quick.reg = function(my.model,
                      show.y.contrasts=F,
                      show.latent=F,
                      show.intercepts=F,
-                     real.names=T) {
+                     real.names=T,
+                     do.return=T) {
   library(pixiedust)
   library(broom)
   library(car)
@@ -1217,9 +1218,9 @@ quick.reg = function(my.model,
       the.footer=NULL
     }
     my.html.table=quick.table(my.manova.table,"manova",test=test.stat,SS.type = SS.type, abbrev.length = abbrev.length,the.footer = the.footer)
-
+    if(do.return){
       return(my.html.table)
-
+    }else{}
     #### ETA-SQ Stuff to finish.... ####
     # #### Make eta-sq
     # my.SSP.err.t=t(my.SSP.err)

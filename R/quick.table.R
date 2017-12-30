@@ -14,7 +14,7 @@ quick.table=function(my.table,
                      type,
                      test.stat="Pillai",
                      print.type="full",
-                     the.caption=NULL,
+                     the.caption=NA,
                      the.footer=NA,
                      abbrev.length=ab.len,
                      SS.type=2,
@@ -106,7 +106,7 @@ quick.table=function(my.table,
   }
 
   #### Put in caption
-  if(!is.null(the.caption)){
+  if(!is.na(the.caption)){
     my.html.table=paste(my.html.table,attr(my.table,"quick.caption"))
   }
 
@@ -201,7 +201,7 @@ quick.table=function(my.table,
 
   #### Put in custom bottom
   if(!is.na(the.footer) & show.footer){
-    my.html.table=paste(my.html.table,"<p align=\"center\">",the.footer,"</p>")
+    my.html.table=paste(my.html.table,"<div align=\"center\">",the.footer,"</div>")
   }
   #### Put in end
   my.html.table=paste(my.html.table,"</div>")
