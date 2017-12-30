@@ -1,13 +1,6 @@
 quick.SSCP=function(my.model, myDF, marginality, show.contrasts, my.envir, ...){
   UseMethod("quick.SSCP", my.model)
 }
-quick.SSCP.lm=function(my.model,myDF,marginality,show.contrasts,my.envir){
-  my.formula.lists=quick.formula(my.model,my.envir)
-
-  #### New DF and Number (levels) of dependent
-  my.new.df=my.model$model
-  my.y.levels=1
-}
 quick.SSCP.manova=function(my.model, myDF, marginality, show.contrasts, show.latent, my.envir){
   #### Split and get formulas ####
 
@@ -87,3 +80,45 @@ quick.SSCP.manova=function(my.model, myDF, marginality, show.contrasts, show.lat
 
   return(my.nested.table)
 }
+# quick.SSCP.lm=function(my.model,myDF,marginality,show.contrasts,my.envir){
+#   my.formula.lists=quick.formula(my.model,my.envir)
+#
+#   #### New DF and Number (levels) of dependent
+#   my.new.df=my.model$model
+#   my.y.levels=1
+#
+#   #### Run all models ####
+#   #### Only running Type II
+#   #### Since it is now lapply, can make it parallel easily later
+#   attach(my.new.df)
+#   my.null.model=lm(my.formula.lists[[1]])
+#   my.pre.models=lapply(my.formula.lists[[2]],lm)
+#   my.full.models=lapply(my.formula.lists[[3]],lm)
+#   detach(my.new.df)
+#
+#   #### Make SS
+#   my.pre.models.SS=lapply(my.formula.lists[[2]],quick.SS.list,marginality)
+#
+#   #### Make nested data frame ####
+#   ## variable (str) | formula (str) | model
+#   my.nested.table=NULL
+#   my.nested.table=list("null",my.formula.lists[[1]],my.null.model,NA,NA,NA,NA)
+#
+#   model.names=names(my.model$model)[-1]
+#
+#   for(v in 1:length(model.names)){
+#     my.nested.table=rbind(my.nested.table,list(model.names[v],my.formula.lists[[2]][[v]],
+#                                                my.pre.models[[v]],my.pre.models.SSCP[[v]],
+#                                                {my.null.model$df.residual-my.pre.models[[v]]$df.residual},
+#                                                NA,NA))
+#     my.nested.table=rbind(my.nested.table,list(model.names[v],my.formula.lists[[3]][[v]],
+#                                                my.full.models[[v]],my.full.models.SSCP[[v]],
+#                                                {my.null.model$df.residual-my.full.models[[v]]$df.residual},
+#                                                my.full.models.SSCP[[v]][[1]][{length(my.full.models.SSCP[[v]][[1]])}],
+#                                                {my.null.model$df.residual-my.full.models[[v]]$df.residual}-{my.null.model$df.residual-my.pre.models[[v]]$df.residual}))
+#
+#   }
+#
+#   colnames(my.nested.table)=c("Variable","Formula","Model","SSCP","df","Change","df Change")
+#
+# }
