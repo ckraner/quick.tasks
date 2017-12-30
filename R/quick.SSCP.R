@@ -82,7 +82,7 @@ quick.SSCP.manova=function(my.model, myDF, marginality, show.contrasts, show.lat
 
   #### Get Contrasts ####
   if(show.contrasts){
-    my.nested.table=quick.part.cont(my.nested.table,latent.cont=ifelse(show.latent,T,F))
+    my.nested.table=quick.part.cont(my.nested.table,marginality,latent.cont=ifelse(show.latent,T,F))
   }
 
   return(my.nested.table)

@@ -17,7 +17,7 @@
 #' @keywords Explore
 #' @examples
 #' quick.contrast(my.nested.table)
-quick.part.cont=function(my.nested.table,SS.type=2,adjustment="bonferroni",abbrev.length=30,latent.cont=F){
+quick.part.cont=function(my.nested.table,marginality,adjustment="bonferroni",abbrev.length=30,latent.cont=F){
   #### Get y levels
   my.y.levels=dim(my.nested.table[1,4][[1]][[1]])[1]
 
@@ -37,7 +37,7 @@ quick.part.cont=function(my.nested.table,SS.type=2,adjustment="bonferroni",abbre
       #### If should, make contrast
       my.new.df=my.nested.table[p,3][[1]]$model
       my.MSE=mean(my.nested.table[p,3][[1]]$residuals^2)
-      if(SS.type==3){
+      if(!marginality){
       the.resid.SS=sum(diag(my.nested.table[p,4][[1]][[2]]))
       }else{
         the.resid.SS=sum(diag(my.nested.table[p,4][[1]][[2]][[1]]))
