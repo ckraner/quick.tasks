@@ -40,7 +40,7 @@ quick.reg.table = function(my.model,
                            show.latent=F,
                            show.intercepts=F,
                            real.names=T,
-                           do.return=T) {
+                           do.return=F) {
   library(pixiedust)
   library(broom)
   library(car)
@@ -52,19 +52,6 @@ quick.reg.table = function(my.model,
   #### Find type ####
   my.reg.type=quick.type(my.model)
 
-  #### Set Inits ####
-  if(type=="ord"){
-    ab.len=30
-    library(ordinal)
-  }else{
-    ab.len=15
-  }
-  #### Get data frame from parent environment ####
-  my.found.df = eval(parse(text=capture.output(my.model$call$data)),envir = parent.frame())
-  #print(dim(my.found.df))
-  if (is.null(my.found.df)) {
-    stop(paste("No data frame found"))
-  }
 
 
 
@@ -90,8 +77,25 @@ quick.reg.table.manova = function(my.model,
                                   show.latent=F,
                                   show.intercepts=F,
                                   real.names=T,
-                                  do.return=T,marginality=T) {
+                                  do.return=F,marginality=T) {
 
+
+  #### Find type ####
+  my.reg.type=quick.type(my.model)
+
+  #### Set Inits ####
+  if(type=="ord"){
+    ab.len=30
+    library(ordinal)
+  }else{
+    ab.len=15
+  }
+  #### Get data frame from parent environment ####
+  my.found.df = eval(parse(text=capture.output(my.model$call$data)),envir = parent.frame())
+  #print(dim(my.found.df))
+  if (is.null(my.found.df)) {
+    stop(paste("No data frame found"))
+  }
 
   #### for expansion
   if (!VIF & !part.eta) {
@@ -530,1156 +534,1652 @@ quick.reg.table.manova = function(my.model,
 
 
 
-quick.reg.table.lm = function(my.model,
-                                   part.eta = F,
-                                   VIF = F,
-                                   myDF = my.found.df,
-                                   marginality=T,
-                                   abbrev.length = ab.len,
-                                   pix.int = T,
-                                   pix.method = "html",
-                                   type = my.reg.type,
-                                   my.factor = NULL,
-                                   do.glance=T,
-                                   show.footer=T,
-                                   adjustment = "bonferroni",
-                                   show.contrasts=F,
-                                   show.intercepts=F,
-                                   do.return=T) {
-
-  SS.type = 2
-
-    #### ANOVA TABLES ####
-    my.summary = summary(my.model)
-    my.coefficients = my.summary$coefficients
-    my.coefficients = as.data.frame(my.coefficients)
-    if(marginality){
-      my.III.summary = car::Anova(my.model, type = 2)
-    }else{
-      my.III.summary = car::Anova(my.model, type = 3)
-    }
-
-    the.length = dim(my.III.summary)[1]
-
-    #### Calculate total SS ####
-    my.total = sum(my.III.summary$`Sum Sq`[2:length(my.III.summary$`Sum Sq`)])
-    my.df.total = sum(my.III.summary$Df[2:length(my.III.summary$Df)])
-    total.intercepts = 1
-    my.rownames = c(abbreviate(rownames(my.summary$coefficients), minlength = abbrev.length),
-                    "Residuals",
-                    "Total")
-
-    treat.SS=sum(my.III.summary$`Sum Sq`[2:{length(my.III.summary$`Sum Sq`)-1}])
-    treat.df=sum(my.III.summary$Df[2:{length(my.III.summary$Df)-1}])
-
-
-
-  if (!VIF & !part.eta) {
-    v.p.len = 7
-    v.p.rep = 0
-  } else if (!VIF) {
-    v.p.len = 8
-    v.p.rep = 1
-  } else if (!part.eta) {
-    v.p.len = 8
-    v.p.rep = 1
-  } else{
-    v.p.len = 9
-    v.p.rep = 2
-  }
-
-  #### Make table if not MANOVA ####
-  my.tables.df = as.data.frame(matrix(ncol = v.p.len, nrow = 1))
-
-    if (!VIF & !part.eta) {
-      my.std.error = c(my.coefficients$`Std. Error`, NA)
-      my.estimate = c(my.coefficients$Estimate, NA)
-      names(my.tables.df) = c("rownames",
-                              "sumsq",
-                              "df",
-                              "est",
-                              "std.err",
-                              "f.val",
-                              "p.val")
-    } else if (!part.eta) {
-      my.VIF = car::vif(my.model)
-      names(my.tables.df) = c("rownames",
-                              "sumsq",
-                              "df",
-                              "est",
-                              "std.err",
-                              "f.val",
-                              "p.val",
-                              "VIF")
-    } else if (!VIF) {
-      names(my.tables.df) = c("rownames",
-                              "sumsq",
-                              "df",
-                              "est",
-                              "std.err",
-                              "f.val",
-                              "p.val",
-                              "p.eta")
-    } else{
-      my.VIF = car::vif(my.model)
-      names(my.tables.df) = c("rownames",
-                              "sumsq",
-                              "df",
-                              "est",
-                              "std.err",
-                              "f.val",
-                              "p.val",
-                              "p.eta",
-                              "VIF")
-    }
-
-  #### Make the double table entries ####
-
-  #### Was very annoying...took my frustration out on
-  #### Variable names
-
-  factor.stupid = NULL
-  factor.rownames = NULL
-  num.of.levels = NULL
-  ord.temp = 0
-  if (!is.null(my.factor)) {
-    for (i in 1:length(my.factor)) {
-      factor.stupid = c(factor.stupid, grep(paste("^", my.factor[i], "$", sep =
-                                                    ""), names(myDF)))
-
-        factor.rownames = c(factor.rownames, grep(
-          paste("^", my.factor[i], "$", sep = ""),
-          rownames(my.III.summary)
-        ))
-        num.of.levels = c(num.of.levels, length(levels(myDF[[factor.stupid[i]]])))
-        # }else if(type=="glm"){
-        #   factor.rownames=c(factor.rownames,{grep(paste("^",my.factor[i],"$",sep=""),rownames(my.III.summary))+1})
-        #   num.of.levels=c(num.of.levels,length(levels(myDF[[factor.stupid[i]]])))
-
-    }
-
-  } else{
-    factor.rownames = 0L
-  }
-
-
-
-  #### Make phia stuff ####
-  if(show.contrasts){
-      if(!is.null(my.factor)){
-      my.phia.reg=quick.contrast(my.model,skip.me=T,adjustment = adjustment,SS.type = SS.type,abbrev.length = abbrev.length)
-      my.j=0
-      my.big.phia=NULL
-      phia.shift=0
-      real.shift=0
-      for(i in 1:dim(my.phia.reg)[1]){
-        if(!is.na(my.phia.reg[i,1])){
-          my.j=my.j+1
-          real.shift=real.shift+phia.shift
-          my.big.phia[[my.j]]=my.phia.reg[i,2:7]
-        }else{
-          my.big.phia[[my.j]][i-real.shift,]=my.phia.reg[i,2:7]
-        }
-        phia.shift=phia.shift+1
-      }
-
-      my.phia.rownames=NULL
-      my.phia.SS=NULL
-      my.phia.value=NULL
-      my.phia.F=NULL
-      my.phia.p=NULL
-      my.phia.err=NULL
-      for(i in 1:{my.j}){
-        my.phia.rownames[[i]]=my.big.phia[[i]]$names
-        my.phia.SS[[i]]=my.big.phia[[i]]$`Sum of Sq`
-        my.phia.value[[i]]=my.big.phia[[i]]$Value
-        my.phia.F[[i]]=my.big.phia[[i]][,5]
-        my.phia.p[[i]]=my.big.phia[[i]][,6]
-
-      }
-    }
-  }
-
-
-
-  my.factor.var = 1
-  this.temp.var = 1
-  this.shift.temp = 1
-  yet.another.var = 1
-  my.shift = 0
-  other.temp = 2
-  ord.temp = 0
-  phia.temp=1
-
-    dang.length = length(rownames(my.III.summary))
-
-
-
-
-  while (this.shift.temp < dang.length) {
-    if (is.na(factor.rownames[my.factor.var])) {
-      my.factor.rownames = 1
-
-    } else{
-      my.factor.rownames = factor.rownames[my.factor.var]
-
-    }
-    #### LOOP ####
-    if (this.shift.temp == 1) {
-      i = 1
-      if(type=="ord" | type=="glm"){
-        my.tables.df[this.temp.var, ] = c(
-          "Intercept Change",
-          NA,
-          NA,
-          NA,
-          my.int.dev.total,
-          my.int.dev.df,
-          pchisq(my.int.dev.total,my.int.dev.df,lower.tail = F),
-          rep(NA, v.p.rep))
-
-        this.temp.var=this.temp.var+1
-      }
-      while (i <= total.intercepts) {
-        if (type == "lm") {
-          my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp]
-          my.df = my.III.summary$Df[this.shift.temp]
-          my.est = my.estimate[this.shift.temp]
-          my.std.err = my.std.error[this.shift.temp]
-          my.f.val = my.III.summary$`F value`[this.shift.temp]
-          my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
-          my.tables.df[this.temp.var, ] = c(
-            my.rownames[this.shift.temp],
-            summary(my.model)[[4]][this.shift.temp,1],
-            summary(my.model)[[4]][this.shift.temp,2],
-            my.sumsq,
-            my.df,
-            my.f.val,
-            my.p.val,
-            rep(NA, v.p.rep)
-          )
-        } else if(type=="glm"){
-          #### HERE IS WHERE I LEFT OFF!! ####
-          # my.or = exp(my.estimate[this.shift.temp])
-          # my.est = my.estimate[this.shift.temp]
-          # my.z.val = my.summary$coefficients[this.shift.temp, 3]
-          # my.std.err = my.std.error[this.shift.temp]
-          #my.dev=my.III.summary$`LR Chisq`[this.shift.temp]
-          #my.df=my.III.summary$Df[this.shift.temp]
-          # my.p.val = my.summary$coefficients[{
-          #   this.shift.temp
-          #}, 4]
-
-          my.tables.df[this.temp.var, ] = c(
-            paste(names(attr(my.model$model[[i]],"labels"))[1],"-",names(attr(my.model$model[[i]],"labels"))[2],sep=""),
-            my.int.dev.or[i],
-            my.int.dev.or.confint[1],
-            my.int.dev.or.confint[2],
-            my.int.dev[i],
-            1,
-            NA,
-            rep(NA, v.p.rep))
-
-          #this.temp.var=this.temp.var+1
-          #my.tables.df[this.temp.var,]=c("Treatment",NA,NA,NA,total.dev,total.df,dchisq(total.dev,total.df),rep(NA,v.p.rep))
-
-        }else{
-          my.tables.df[this.temp.var, ] = c(
-            my.int.names[i],
-            my.int.dev.or[i],
-            my.int.dev.or.confint[i,1],
-            my.int.dev.or.confint[i,2],
-            my.int.dev[i],
-            NA,
-            NA,
-            rep(NA, v.p.rep))
-
-          #this.temp.var=this.temp.var+1
-
-        }
-
-        this.shift.temp = this.shift.temp + 1
-
-        this.temp.var = this.temp.var + 1
-        i = i + 1
-
-      }
-      if(type=="ord" | type=="glm"){
-        my.tables.df[this.temp.var,]=c("Treatment Change",NA,NA,NA,treat.dev,vars.df,pchisq(treat.dev,vars.df,lower.tail = F))
-        this.temp.var=this.temp.var+1
-      }else{
-        my.tables.df[this.temp.var,]=c("Treatment",NA,NA,treat.SS,treat.df,glance(my.model)[4],glance(my.model)[5],rep(NA,v.p.rep))
-        this.temp.var=this.temp.var+1
-      }
-    } else if (this.shift.temp == my.factor.rownames) {
-      if (type == "lm") {
-        my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp]
-        my.df = my.III.summary$Df[this.shift.temp]
-        my.est = my.estimate[this.shift.temp]
-        my.std.err = my.std.error[this.shift.temp]
-        my.z.val = NA
-        my.f.val = my.III.summary$`F value`[this.shift.temp]
-        my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
-        if(!VIF & !part.eta){
-          my.tables.df[this.temp.var, ] = c(
-            my.factor[yet.another.var],
-            NA,
-            NA,
-            my.sumsq,
-            my.df,
-            my.f.val,
-            my.p.val,
-            rep(NA, v.p.rep)
-          )
-        }else if(part.eta & !VIF){
-          my.p.eta = my.sumsq / my.total
-          my.tables.df[this.temp.var, ] = c(
-            my.factor[yet.another.var],
-            NA,
-            NA,
-            my.sumsq,
-            my.df,
-            my.f.val,
-            my.p.val,
-            my.p.eta
-          )
-        }else if(!part.eta & VIF){
-
-          my.tables.df[this.temp.var, ] = c(
-            my.factor[yet.another.var],
-            NA,
-            NA,
-            my.sumsq,
-            my.df,
-            my.f.val,
-            my.p.val,
-            my.VIF[this.shift.temp - 1, 1]
-          )
-        }else{
-          my.p.eta = my.sumsq / my.total
-          my.tables.df[this.temp.var, ] = c(
-            my.factor[yet.another.var],
-            NA,
-            NA,
-            my.sumsq,
-            my.df,
-            my.f.val,
-            my.p.val,
-            my.p.eta,
-            my.VIF[this.shift.temp - 1, 1]
-          )
-        }
-      }else{
-
-        # my.or = NA
-        # my.est = NA
-        # my.std.err = NA
-        # my.dev = my.III.summary$`LR Chisq`[ord.temp]
-        # my.df = my.III.summary$Df[ord.temp]
-        # my.p.val = my.III.summary$`Pr(>Chisq)`[ord.temp]
-        my.tables.df[this.temp.var,]=c(my.factor[this.shift.temp-1],
-                                       NA,
-                                       NA,
-                                       NA,
-                                       drop1(new.model,test="Chi")$`LRT`[this.shift.temp],
-                                       drop1(new.model,test="Chi")$`Df`[this.shift.temp],
-                                       drop1(new.model,test="Chi")$`Pr(>Chi)`[this.shift.temp],
-                                       rep(NA,v.p.rep))
-        #
-        # my.tables.df[this.temp.var, ] = c(my.factor[yet.another.var],
-        #                                   my.or,
-        #                                   my.est,
-        #                                   my.std.err,
-        #                                   my.dev,
-        #                                   my.df,
-        #                                   my.p.val)
-        #ord.temp = ord.temp + 1
-      }
-      # else{
-      #   my.or = NA
-      #   my.est = NA
-      #   my.std.err = NA
-      #   my.dev = my.III.summary$Chisq[ord.temp]
-      #   my.df = my.III.summary$Df[ord.temp]
-      #   my.p.val = my.III.summary$`Pr(>Chisq)`[ord.temp]
-      #   my.tables.df[this.temp.var, ] = c(my.factor[yet.another.var],
-      #                                     my.or,
-      #                                     my.est,
-      #                                     my.std.err,
-      #                                     my.dev,
-      #                                     my.df,
-      #                                     my.p.val)
-      #   ord.temp = ord.temp + 1
-      #
-      # }
-      yet.another.var = yet.another.var + 1
-      this.temp.var = this.temp.var + 1
-      this.shift.temp = this.shift.temp + 1
-      if(type=="lm"){
-        other.other.temp = 2
-      }else{
-        other.other.temp=1
-      }
-
-      #### INTERACTION EFFECTS? NOT WORRIED YET ####
-      if ({length(grepl(":", my.summary$coefficients[other.temp, 1])) >
-          0}) {
-
-        #### I think the while should not be +1
-        if(type=="glm" | type=="ord"){
-          num.of.levels[my.factor.var]=num.of.levels[my.factor.var]-1
-        }
-        while (other.other.temp < {
-          num.of.levels[my.factor.var] + 1
-        }) {
-          if (type == "lm") {
-            if(show.contrasts){
-              my.sumsq = NA
-              my.df = NA
-              my.est = my.estimate[other.temp]
-              my.std.err = my.std.error[other.temp]
-              #### NEED TO FIX ####
-              my.f.val = {
-                my.summary$coefficients[other.temp, 3] ^ 2
-              }
-              my.p.val = my.summary$coefficients[other.temp, 4]
-              my.tables.df[this.temp.var, ] = c(
-                my.phia.rownames[[phia.temp]][other.temp-1],
-                my.phia.value[[phia.temp]][other.temp-1],
-                my.est,
-                my.phia.SS[[phia.temp]][other.temp-1],
-                1,
-                my.phia.F[[phia.temp]][other.temp-1],
-                my.phia.p[[phia.temp]][other.temp-1],
-                rep(NA, v.p.rep)
-              )
-            }
-            ord.temp=ord.temp + 1
-          } else if (type == "glm") {
-            # my.or = exp(my.estimate[other.temp])
-            # my.est = my.estimate[other.temp]
-            # my.std.err = my.std.error[other.temp]
-            # my.z.val = my.summary$coefficients[other.temp, 3]
-            # my.dev = my.III.summary$`LR Chisq`[other.temp]
-            # my.df = my.III.summary$Df[other.temp]
-            # my.p.val = my.summary$coefficients[other.temp, 4]
-            # my.tables.df[this.temp.var, ] = c(my.rownames[other.temp],
-            #                                   my.or,
-            #                                   my.std.err,
-            #                                   my.z.val,
-            #                                   NA,
-            #                                   NA,
-            #                                   my.p.val)
-            if(show.contrasts){
-              my.tables.df[this.temp.var, ] = c(my.phia.rownames[other.temp-1],
-                                                vars.or[other.temp-1],
-                                                vars.or.confint[other.temp-1,1],
-                                                vars.or.confint[other.temp-1,2],
-                                                my.phia[other.temp-1,3],
-                                                my.phia[other.temp-1,4],
-                                                my.phia[other.temp-1,6],rep(NA,v.p.rep))
-              #this.shift.temp = this.shift.temp + 1
-            }
-            ord.temp=ord.temp + 1
-          } else{
-            my.or = exp(my.estimate[other.temp + total.intercepts - 1])
-            my.est = my.estimate[other.temp + total.intercepts - 1]
-            my.std.err = my.std.error[other.temp + total.intercepts -
-                                        1]
-            my.z.val = my.summary$coefficients[{
-              other.temp + total.intercepts - 1
-            }, 3]
-            #my.dev=my.III.summary$Chisq[other.temp]
-            #my.df=my.III.summary$Df[other.temp]
-            my.p.val = my.summary$coefficients[{
-              other.temp + total.intercepts - 1
-            }, 4]
-            if (!VIF) {
-              my.tables.df[this.temp.var, ] = c(my.rownames[other.temp +
-                                                              total.intercepts - 1],
-                                                my.or,
-                                                my.std.err,
-                                                my.z.val,
-                                                NA,
-                                                NA,
-                                                my.p.val)
-            } else{
-              my.tables.df[this.temp.var, ] = c(my.rownames[other.temp +
-                                                              total.intercepts - 1],
-                                                my.or,
-                                                my.std.err,
-                                                my.z.val,
-                                                NA,
-                                                NA,
-                                                my.p.val,
-                                                my.VIF[this.shift.temp - 1, 1])
-
-            }
-            this.shift.temp = this.shift.temp + 1
-          }
-          this.temp.var = this.temp.var + 1
-          other.temp = other.temp + 1
-          other.other.temp = other.other.temp + 1
-          the.length = the.length + 1
-
-        }
-        phia.temp=phia.temp+1
-        if(!show.contrasts){this.temp.var=this.temp.var-ord.temp}
-      } else{
-
-      }
-
-      if (my.factor.var == 1) {
-        my.shift = {
-          my.shift + other.temp - 2
-        }
-
-      } else{
-        my.shift = my.shift + other.temp
-
-      }
-
-      my.factor.var = my.factor.var + 1
-
-    } else{
-      if (type == "lm") {
-        my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp]
-        my.df = my.III.summary$Df[this.shift.temp]
-        my.est = my.estimate[this.shift.temp]
-        my.std.err = my.std.error[this.shift.temp]
-        my.f.val = my.III.summary$`F value`[this.shift.temp]
-        my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
-        if (!VIF & !part.eta) {
-          my.tables.df[this.temp.var, ] = c(
-            rownames(my.III.summary)[this.shift.temp],
-            summary(my.model)[[4]][this.shift.temp+ord.temp-1,1],
-            summary(my.model)[[4]][this.shift.temp+ord.temp-1,2],
-            my.sumsq,
-            my.df,
-            my.f.val,
-            my.p.val
-          )
-        } else if (!part.eta) {
-          my.tables.df[this.temp.var, ] = c(
-            rownames(my.III.summary)[this.shift.temp],
-            summary(my.model)[[4]][this.shift.temp+ord.temp-1,1],
-            summary(my.model)[[4]][this.shift.temp+ord.temp-1,2],
-            my.sumsq,
-            my.df,
-            my.f.val,
-            my.p.val,
-            my.VIF[this.shift.temp - 1, 1]
-          )
-        } else if (!VIF) {
-          my.p.eta = my.sumsq / my.total
-          my.tables.df[this.temp.var, ] = c(
-            rownames(my.III.summary)[this.shift.temp],
-            summary(my.model)[[4]][this.shift.temp+ord.temp-1,1],
-            summary(my.model)[[4]][this.shift.temp+ord.temp-1,2],
-            my.sumsq,
-            my.df,
-            my.f.val,
-            my.p.val,
-            my.p.eta
-          )
-        } else{
-          my.p.eta = my.sumsq / my.total
-          my.tables.df[this.temp.var, ] = c(
-            rownames(my.III.summary)[this.shift.temp],
-            summary(my.model)[[4]][this.shift.temp+ord.temp-1,1],
-            summary(my.model)[[4]][this.shift.temp+ord.temp-1,2],
-            my.sumsq,
-            my.df,
-            my.f.val,
-            my.p.val,
-            my.p.eta,
-            my.VIF[this.shift.temp - 1, 1]
-          )
-        }
-        ord.temp=ord.temp+1
-      } else if (type == "glm") {
-        # if (!is.null(my.factor)) {
-        #   this.shift.temp = this.shift.temp - ord.temp-1
-        # }
-        # my.or = exp(my.estimate[this.shift.temp])
-        # my.est = my.estimate[this.shift.temp]
-        # my.std.err = my.std.error[this.shift.temp]
-        # my.z.val = my.summary$coefficients[other.temp, 3]
-        # my.dev = my.III.summary$`LR Chisq`[ord.temp]
-        # my.df = my.III.summary$Df[ord.temp]
-        # my.p.val = my.III.summary$`Pr(>Chisq)`[ord.temp]
-        if (!VIF) {
-          # my.tables.df[this.temp.var, ] = c(my.rownames[this.shift.temp],
-          #                                   my.or,
-          #                                   my.std.err,
-          #                                   NA,
-          #                                   my.dev,
-          #                                   my.df,
-          #                                   my.p.val)
-          my.tables.df[this.temp.var,]=c(names(vars.or)[{this.shift.temp+sum(vars.dev.df[1:{this.shift.temp-1}],na.rm = T)-yet.another.var+1}],
-                                         vars.or[{this.shift.temp+sum(vars.dev.df[1:{this.shift.temp-1}],na.rm = T)-yet.another.var+1}],
-                                         vars.or.confint[{this.shift.temp+sum(vars.dev.df[1:{this.shift.temp-1}],na.rm = T)-yet.another.var+1},1],
-                                         vars.or.confint[{this.shift.temp+sum(vars.dev.df[1:{this.shift.temp-1}],na.rm = T)-yet.another.var+1},2],
-                                         vars.dev[this.shift.temp],
-                                         vars.dev.df[this.shift.temp],
-                                         vars.dev.p[this.shift.temp],rep(NA,v.p.len))
-        } else{
-          my.tables.df[this.temp.var, ] = c(names(vars.or)[{this.shift.temp+sum(vars.dev.df[1:{this.shift.temp-1}],na.rm = T)-yet.another.var+1}],
-                                            vars.or[{this.shift.temp+sum(vars.dev.df[1:{this.shift.temp-1}],na.rm = T)-yet.another.var+1}],
-                                            vars.or.confint[{this.shift.temp+sum(vars.dev.df[1:{this.shift.temp-1}],na.rm = T)-yet.another.var+1},1],
-                                            vars.or.confint[{this.shift.temp+sum(vars.dev.df[1:{this.shift.temp-1}],na.rm = T)-yet.another.var+1},2],
-                                            vars.dev[this.shift.temp],
-                                            vars.dev.df[this.shift.temp],
-                                            vars.dev.p[this.shift.temp],
-                                            rep(NA,v.p.len))
-        }
-        # if (!is.null(my.factor)) {
-        #   this.shift.temp = this.shift.temp + ord.temp+1
-        # }
-        yet.another.var=yet.another.var+1
-        ord.temp = ord.temp + 1
-      } else{
-        if (!is.null(my.factor)) {
-          this.shift.temp = this.shift.temp - ord.temp
-        }else{
-          this.shift.temp=this.shift.temp-total.intercepts
-        }
-        my.tables.df[this.temp.var, ] = c(names(vars.or)[this.shift.temp],
-                                          vars.or[{this.shift.temp}],
-                                          if(!is.null(dim(vars.or.confint))){
-                                            vars.or.confint[{this.shift.temp},1]
-                                          }else{
-                                            vars.or.confint[1]
-                                          },
-                                          if(!is.null(dim(vars.or.confint))){
-                                            vars.or.confint[{this.shift.temp},2]
-                                          }else{
-                                            vars.or.confint[2]
-                                          },
-                                          vars.dev[this.shift.temp-ord.temp],
-                                          vars.dev.df[this.shift.temp-ord.temp],
-                                          vars.dev.p[this.shift.temp-ord.temp],
-                                          rep(NA,v.p.len))
-        if (!is.null(my.factor)) {
-          this.shift.temp = this.shift.temp + ord.temp
-        }else{
-          this.shift.temp=this.shift.temp+total.intercepts
-        }
-        #ord.temp = ord.temp + 1
-      }
-      this.shift.temp = this.shift.temp + 1
-      this.temp.var = this.temp.var + 1
-
-    }
-  }
-
-  if (type == "lm") {
-    my.tables.df[this.temp.var, ] = c(
-      "Residuals",
-      NA,
-      NA,
-      my.III.summary$`Sum Sq`[this.shift.temp],
-      my.III.summary$Df[this.shift.temp],
-      NA,
-      NA,
-      rep(NA, v.p.rep)
-    )
-    my.tables.df[this.temp.var + 1, ] = c("Total Change",
-                                          NA,
-                                          NA,
-                                          my.total,
-                                          my.df.total,
-                                          rep(NA, v.p.rep + 2))
-    my.tables.df[this.temp.var+2,]=c("Total SS",NA,NA,my.total+my.III.summary$`Sum Sq`[1],my.df.total+1,rep(NA,v.p.rep+2))
-    if (!VIF & !part.eta) {
-
-    } else if (!VIF) {
-      my.tables.df$p.eta = as.numeric(my.tables.df$p.eta)
-    } else if (!part.eta) {
-      my.tables.df$VIF = as.numeric(my.tables.df$VIF)
-    } else{
-      my.tables.df$p.eta = as.numeric(my.tables.df$p.eta)
-      my.tables.df$VIF = as.numeric(my.tables.df$VIF)
-    }
-    my.tables.df$f.val = as.numeric(my.tables.df$f.val)
-    my.tables.df$est = as.numeric(my.tables.df$est)
-    my.tables.df$sumsq = as.numeric(my.tables.df$sumsq)
-    my.tables.df$df = as.numeric(my.tables.df$df)
-    my.tables.df$std.err = as.numeric(my.tables.df$std.err)
-    my.tables.df$p.val = as.numeric(my.tables.df$p.val)
-  } else{
-
-    my.tables.df[this.temp.var,]=c("Total Change",NA,NA,NA,total.dev.change,total.dev.change.df,pchisq(total.dev.change,total.dev.change.df,lower.tail = F),rep(NA,v.p.rep))
-    my.tables.df[this.temp.var+1,]=c("Residuals",NA,NA,NA,resid.dev,resid.df,NA,rep(NA,v.p.rep))
-    my.tables.df[this.temp.var+2,]=c("Total",NA,NA,NA,total.dev,total.df,NA,rep(NA,v.p.rep))
-
-
-    #my.tables.df[this.temp.var,] = c("Change from Null", NA, NA, NA, ddeviance2, ddf2, fit2)
-    my.tables.df$p.odd = as.numeric(my.tables.df$p.odd)
-    my.tables.df$p.odd.2.5 = as.numeric(my.tables.df$p.odd.2.5)
-    my.tables.df$p.odd.97.5 = as.numeric(my.tables.df$p.odd.97.5)
-    my.tables.df$deviance=as.numeric(my.tables.df$deviance)
-    my.tables.df$p.val=as.numeric(my.tables.df$p.val)
-    if (VIF) {
-      my.tables.df$VIF = as.numeric(my.tables.df$VIF)
-    }
-  }
-
-
-
-  #### Make custom glance stats ####
-  if(do.glance){
-    #### Can eventually make it options
-    if (type == "lm") {
-      glance_stats=as.data.frame(matrix(ncol={7+v.p.rep},nrow=1))
-      glance_stats[1,]=c(paste("Method: ","QR Decomposition",if(show.contrasts){paste("<br />Adjustment Method: ",adjustment,sep="")},sep=""),rep(NA,6),rep(NA,v.p.rep))
-
-      # glance_stats = broom::glance(my.model)
-      # glance_stats = tidyr::gather(glance_stats)
-      #
-      #
-      # glance_stats[3:{
-      #   5 + v.p.rep
-      # }] = NA
-      # glance_stats[6 + v.p.rep] = c(glance_stats$key[7:8],
-      #                               NA,
-      #                               glance_stats$key[9:11],
-      #                               NA,
-      #                               NA,
-      #                               NA,
-      #                               NA,
-      #                               NA)
-      # glance_stats[7 + v.p.rep] = c(glance_stats$value[7:8],
-      #                               NA,
-      #                               glance_stats$value[9:11],
-      #                               NA,
-      #                               NA,
-      #                               NA,
-      #                               NA,
-      #                               NA)
-      # glance_stats = glance_stats[-7:-11, ]
-      # glance_stats = glance_stats[-3, ]
-      # glance_stats = glance_stats[-5, ]
-
-    } else if (type == "glm") {
-      glance_stats=as.data.frame(matrix(ncol={7+v.p.rep},nrow=1))
-      glance_stats[1,]=c(paste("Family: ",new.model$family$family," <br /> Link: ",new.model$family$link,if(show.contrasts){paste(" <br />Adjustment: ",adjustment,sep="")},sep=""),rep(NA,6),rep(NA,v.p.rep))
-
-      # glance_stats = broom::glance(my.model)
-      # glance_stats = tidyr::gather(glance_stats)
-      #
-      #
-      # glance_stats[[3]] = c("Family: ", "Link: ", rep(NA, 5))
-      # glance_stats[[4]] = c(my.model$family$family,
-      #                       my.model$family$link,
-      #                       rep(NA, 5))
-      # glance_stats[5:{
-      #   5 + v.p.rep
-      # }] = NA
-      # glance_stats[6 + v.p.rep] = c(glance_stats$key[3:6], NA, NA, NA)
-      # glance_stats[7 + v.p.rep] = c(glance_stats$value[3:6], NA, NA, NA)
-      # glance_stats[[1]] = c("Null.dev", "Chi-Sq", "dF", "Pr(>Chisq)", NA, NA, NA)
-      # glance_stats[[2]] = c(
-      #   glance_stats$value[1],
-      #   ddeviance2,
-      #   ddf2,
-      #   pvalString(fit2, digits = 3, format = "default"),
-      #   NA,
-      #   NA,
-      #   NA
-      # )
-      # glance_stats = glance_stats[-5:-7, ]
-      # glance_stats2=as.data.frame(matrix(ncol=7,nrow=1))
-      # glance_stats2[1,]=c(glance_stats$key[1],glance_stats$value[1],NA,NA,NA,glance_stats$key[6],glance_stats$value[6])
-      # glance_stats2[2,]=c(glance_stats$key[2],glance_stats$value[2],NA,NA,NA,glance_stats$key[7],glance_stats$value[7])
-      # glance_stats2[3,]=c(glance_stats$key[3],glance_stats$value[3],NA,NA,NA,glance_stats$key[4],glance_stats$value[4])
-      # glance_stats=glance_stats2
-    } else if(type=="ord"){
-      glance_stats=as.data.frame(matrix(ncol={7+v.p.rep},nrow=1))
-      glance_stats[1,]=c(paste("Family: Ordinal <br /> Link: ",new.model$info$link,sep=""),rep(NA,6),rep(NA,v.p.rep))
-      # glance_stats[[1]]=c("Null.dev","Chi-Sq","dF","Pr(>Chisq)")
-      # glance_stats[[2]]=c({{-2*my.model$logLik}-ddeviance2},ddeviance2,ddf2,pvalString(fit2, digits = 3, format = "default"))
-      # glance_stats[[3]]=c("Family: ","Link: ",NA,NA)
-      # glance_stats[[4]]=c("ordinal",levels(my.model$info$link),NA,NA)
-      # glance_stats[[5:{5+v.p.rep}]]=c(NA,NA,NA,NA)
-      # glance_stats[[{6+v.p.rep}]]=c("logLik","AIC","BIC","deviance")
-      # glance_stats[[{7+v.p.rep}]]=c(my.model$logLik,as.numeric(levels(my.model$info$AIC)),BIC(my.model),{-2*my.model$logLik})
-    }else{
-
-    }
-  }
-  #### For total
-  the.length = the.length + 1
-  this.temp.var = this.temp.var + 1
-  #### Make table ####
-
-  options(pixie_interactive = pix.int,
-          pixie_na_string = "")
-
-
-  if (type == "lm") {
-    the.length=the.length+2
-    my.dust = pixiedust::dust(my.tables.df) %>%
-      sprinkle(cols = "p.val", fn = quote(pvalString(
-        value, digits = 3, format = "default"
-      ))) %>%
-      sprinkle_print_method(pix.method) %>%
-      sprinkle_na_string() %>%
-      sprinkle(
-        rows = 1:the.length,
-        cols = v.p.len,
-        border = "right",
-        border_color = "black"
-      ) %>%
-      sprinkle(
-        rows = 1:the.length,
-        cols = 1,
-        border = "left",
-        border_color = "black"
-      ) %>%
-      sprinkle(
-        rows=2,
-        cols=1:v.p.len,
-        border=c("top","bottom")
-      )%>%
-      sprinkle(rows=this.temp.var-1,
-               border="top")%>%
-      sprinkle(
-        rows = 1,
-        cols = 1:v.p.len,
-        border = c("top", "bottom"),
-        border_color = "black",
-        part = "head"
-      ) %>%
-      sprinkle(rows=1,cols=1,border="left",part="head")%>%
-      sprinkle(rows=1,cols=v.p.len,border="right",part="head")%>%
-      sprinkle(
-        rows = this.temp.var+1,
-        cols = 1:v.p.len,
-        border = "bottom",
-        border_color = "black"
-      )
-
-    if (!VIF & !part.eta) {
-      my.dust = my.dust %>%
-        sprinkle(cols = c("sumsq", "est", "std.err", "f.val"),
-                 round = 2) %>%
-        sprinkle(cols = c(2, 3, 4, 5, 6, 7), pad = 5) %>%
-        sprinkle_colnames(
-          "Variable",
-          "Estimate",
-          "Std. Error",
-          paste("Type ", SS.type, "<br /> Sums of Sq", sep = ""),
-          "df",
-          "F-value",
-          "Pr(>F)"
-        ) %>%
-        sprinkle_align(rows = 1,
-                       halign = "center",
-                       part = "head") %>%
-        sprinkle_pad(rows = 1,
-                     pad = 5,
-                     part = "head")
-
-    } else if (!VIF) {
-      my.dust = my.dust %>%
-        sprinkle(
-          cols = c("sumsq", "est", "std.err", "f.val", "p.eta"),
-          round = 2
-        ) %>%
-        sprinkle(cols = c(2, 3, 4, 5, 6, 7, 8), pad = 5) %>%
-        sprinkle_colnames(
-          "Variable",
-          "Estimate",
-          "Std. Error",
-          paste("Type ", SS.type, "<br /> Sums of Sq", sep = ""),
-          "df",
-          "F-value",
-          "Pr(>F)",
-          "Part <br /> eta"
-        ) %>%
-        sprinkle_align(rows = 1,
-                       halign = "center",
-                       part = "head") %>%
-        sprinkle_pad(rows = 1,
-                     pad = 5,
-                     part = "head")
-
-    } else if (!part.eta) {
-      my.dust = my.dust %>%
-        sprinkle(
-          cols = c("sumsq", "est", "std.err", "f.val", "VIF"),
-          round = 2
-        ) %>%
-        sprinkle(cols = c(2, 3, 4, 5, 6, 7, 8), pad = 5) %>%
-        sprinkle_colnames(
-          "Variable",
-          "Estimate",
-          "Std. Error",
-          paste("Type ", SS.type, "<br /> Sums of Sq", sep = ""),
-          "df",
-          "F-value",
-          "Pr(>F)",
-          "VIF"
-        ) %>%
-        sprinkle_align(rows = 1,
-                       halign = "center",
-                       part = "head") %>%
-        sprinkle_pad(rows = 1,
-                     pad = 5,
-                     part = "head")
-
-    } else{
-      my.dust = my.dust %>%
-        sprinkle(
-          cols = c("sumsq", "est", "std.err", "f.val", "p.eta", "VIF"),
-          round = 2
-        ) %>%
-        sprinkle(cols = c(2, 3, 4, 5, 6, 7, 8), pad = 5) %>%
-        sprinkle_colnames(
-          "Variable",
-          "Estimate",
-          "Std. Error",
-          paste("Type ", SS.type, "<br /> Sums of Sq", sep = ""),
-          "df",
-          "F-value",
-          "Pr(>F)",
-          "Part <br /> eta",
-          "VIF"
-        ) %>%
-        sprinkle_align(rows = 1,
-                       halign = "center",
-                       part = "head") %>%
-        sprinkle_pad(rows = 1,
-                     pad = 5,
-                     part = "head")
-
-    }
-
-  } else if (type == "glm2") {
-    my.dust = pixiedust::dust(my.tables.df) %>%
-      sprinkle(cols = "p.val", fn = quote(pvalString(
-        value, digits = 3, format = "default"
-      ))) %>%
-      sprinkle_print_method(pix.method) %>%
-      sprinkle_na_string() %>%
-      sprinkle(cols = 2:5, round = 2) %>%
-      sprinkle(cols = c(2, 3, 4, 5, 6, 7), pad = 5) %>%
-      sprinkle(cols = 2:{7+v.p.rep},
-               pad = 5,
-               part = "head") %>%
-      sprinkle(
-        rows = {
-          this.temp.var - 2
-        },
-        cols = 1:v.p.len,
-        border = "bottom",
-        border_color = "black"
-      ) %>%
-      sprinkle(
-        rows = 1:the.length,
-        cols = 1:v.p.len,
-        border = "right",
-        border_color = "black"
-      ) %>%
-      sprinkle(
-        rows = 1:the.length,
-        cols = 1,
-        border = "left",
-        border_color = "black"
-      ) %>%
-      sprinkle(
-        rows = 1,
-        cols = 1:v.p.len,
-        border = c("top", "bottom", "left", "right"),
-        border_color = "black",
-        part = "head"
-      ) %>%
-      sprinkle(
-        rows = this.temp.var - 1,
-        cols = 1:v.p.len,
-        border = "bottom",
-        border_color = "black"
-      ) %>%
-      sprinkle_align(rows = 1,
-                     halign = "center",
-                     part = "head")
-
-    if (!VIF) {
-      my.dust = my.dust %>% sprinkle_colnames("Variable",
-                                              "Odds Ratio",
-                                              "Std. Error",
-                                              "z-Value",
-                                              "Deviance",
-                                              "df",
-                                              "p-Value")
-    } else{
-      my.dust = my.dust %>% sprinkle_colnames(
-        "Variable",
-        "Odds Ratio",
-        "Std. Error",
-        "z-Value",
-        "Deviance",
-        "df",
-        "p-Value",
-        "VIF"
-      ) %>%
-        sprinkle_round(cols = 8, round = 2)
-    }
-
-  } else{
-    my.dust = pixiedust::dust(my.tables.df) %>%
-      sprinkle(cols = "p.val", fn = quote(pvalString(
-        value, digits = 3, format = "default"
-      ))) %>%
-      sprinkle_print_method(pix.method) %>%
-      sprinkle_na_string() %>%
-      sprinkle(cols = 2:5, round = 2) %>%
-      sprinkle(cols = c(2, 3, 4, 5, 6, 7), pad = 5) %>%
-      sprinkle(cols = 2:7,
-               pad = 5,
-               part = "head") %>%
-      sprinkle(
-        rows = this.temp.var+1,
-        cols = 1:7,
-        border = "bottom",
-        border_color = "black"
-      ) %>%
-      sprinkle(
-        rows = 1,
-        cols = 1:2,
-        border = c("top", "bottom"),
-        border_color = "black",
-        part = "head"
-      ) %>%
-      sprinkle(
-        rows = 1,
-        cols = 3:4,
-        border = c("top", "bottom"),
-        border_color = "black",
-        part = "head"
-      ) %>%
-      sprinkle(
-        rows = 1,
-        cols = 5:{7+v.p.rep},
-        border = c("top", "bottom"),
-        border_color = "black",
-        part = "head"
-      ) %>%
-      sprinkle(
-        rows = this.temp.var - 1,
-        cols = 1:7,
-        border = "bottom",
-        border_color = "black"
-      ) %>%
-      sprinkle(
-        rows = 1,
-        cols = 1:7,
-        border = "bottom",
-        border_color = "black"
-      ) %>%
-      sprinkle(
-        rows = this.temp.var - 2,
-        cols = 1:7,
-        border = "bottom",
-        border_color = "black"
-      ) %>%
-      sprinkle(
-        rows = 1+total.intercepts,
-        cols = 1:7,
-        border = "bottom",
-        border_color = "black"
-      ) %>%
-      sprinkle(
-        rows = 2+total.intercepts,
-        cols = 1:7,
-        border = "bottom",
-        border_color = "black"
-      ) %>%
-      sprinkle_colnames("Variable",
-                        "Odds Ratio",
-                        "Conf. <br /> 2.5%","Int. <br /> 97.5%",
-                        "Deviance",
-                        "df",
-                        "Pr(>Chi)")%>%
-      sprinkle_border(cols=1,border=c("left","right"))%>%
-      sprinkle_border(cols={7+v.p.rep},border="right")%>%
-      sprinkle_border(cols=1,border=c("left","right"),part="head")%>%
-      sprinkle_border(cols={7+v.p.rep},border="right",part="head")
-  }
-  if(do.glance){
-    if (type == "lm") {
-      my.dust = pixiedust::redust(my.dust, glance_stats, part = "foot") %>%
-        sprinkle_na_string(part = "foot") %>%
-        sprinkle(rows=1,merge=T,halign="center",part="foot")
-      # my.dust = pixiedust::redust(my.dust, glance_stats, part = "foot") %>%
-      #   sprinkle(cols = c(2, {
-      #     7 + v.p.rep
-      #   }),
-      #   round = 3,
-      #   part = "foot") %>%
-      #   sprinkle(cols = 3:{
-      #     5 + v.p.rep
-      #   },
-      #   replace = c(rep("", {
-      #     12 + 4 * v.p.rep
-      #   })),
-      #   part = "foot") %>%
-      #   sprinkle(
-      #     cols = 1,
-      #     replace = c("R-Square", "Adj R-Sq", "F-Statistic", "P-Value"),
-      #     part = "foot"
-      #   ) %>%
-      #   sprinkle(
-      #     cols = 2,
-      #     rows = 4,
-      #     fn = quote(pvalString(
-      #       value, digits = 3, format = "default"
-      #     )),
-      #     part = "foot"
-      #   ) %>%
-      #   sprinkle(
-      #     cols = 1:v.p.len,
-      #     rows = 1,
-      #     halign = "center",
-      #     part = "head"
-      #   ) %>%
-      #   sprinkle_width(cols = 1,
-      #                  width = 90,
-      #                  width_units = "pt") %>%
-      #   sprinkle_width(cols = 2,
-      #                  width = 108,
-      #                  width_units = "pt") %>%
-      #   sprinkle_width(cols = 4,
-      #                  width = 62,
-      #                  width_units = "pt") %>%
-      #   sprinkle_width(cols = 5,
-      #                  width = 68,
-      #                  width_units = "pt") %>%
-      #   sprinkle_width(cols = 6,
-      #                  width = 68,
-      #                  width_units = "pt") %>%
-      #   sprinkle_width(cols = 7,
-      #                  width = 71,
-      #                  width_units = "pt") %>%
-      #   sprinkle(cols = 2,
-      #            halign = "left",
-      #            part = "foot")
-    } else{
-      my.dust = pixiedust::redust(my.dust, glance_stats, part = "foot") %>%
-        sprinkle_na_string(part = "foot") %>%
-        sprinkle(rows=1,merge=T,halign="center",part="foot")
-    }
-  }
-  if (pix.int) {
-    return(my.dust)
-  } else{
-    my.dust.print = print(my.dust, quote = F)[1]
-    return(my.dust.print)
-  }
-
-}
-
+# quick.reg.table.lm = function(my.model,
+#                                    part.eta = F,
+#                                    VIF = F,
+#                                    myDF = my.found.df,
+#                                    marginality=T,
+#                                    abbrev.length = ab.len,
+#                                    pix.int = T,
+#                                    pix.method = "html",
+#                                    type = my.reg.type,
+#                                    my.factor = NULL,
+#                                    do.glance=T,
+#                                    show.footer=T,
+#                                    adjustment = "bonferroni",
+#                                    show.contrasts=F,
+#                                    show.intercepts=F,
+#                                    do.return=T) {
+#
+#   SS.type = 2
+#
+#     #### ANOVA TABLES ####
+#     my.summary = summary(my.model)
+#     my.coefficients = my.summary$coefficients
+#     my.coefficients = as.data.frame(my.coefficients)
+#     if(marginality){
+#       my.III.summary = car::Anova(my.model, type = 2)
+#     }else{
+#       my.III.summary = car::Anova(my.model, type = 3)
+#     }
+#
+#     the.length = dim(my.III.summary)[1]
+#
+#     #### Calculate total SS ####
+#     my.total = sum(my.III.summary$`Sum Sq`[2:length(my.III.summary$`Sum Sq`)])
+#     my.df.total = sum(my.III.summary$Df[2:length(my.III.summary$Df)])
+#     total.intercepts = 1
+#     my.rownames = c(abbreviate(rownames(my.summary$coefficients), minlength = abbrev.length),
+#                     "Residuals",
+#                     "Total")
+#
+#     treat.SS=sum(my.III.summary$`Sum Sq`[2:{length(my.III.summary$`Sum Sq`)-1}])
+#     treat.df=sum(my.III.summary$Df[2:{length(my.III.summary$Df)-1}])
+#
+#
+#
+#   if (!VIF & !part.eta) {
+#     v.p.len = 7
+#     v.p.rep = 0
+#   } else if (!VIF) {
+#     v.p.len = 8
+#     v.p.rep = 1
+#   } else if (!part.eta) {
+#     v.p.len = 8
+#     v.p.rep = 1
+#   } else{
+#     v.p.len = 9
+#     v.p.rep = 2
+#   }
+#
+#   #### Make table if not MANOVA ####
+#   my.tables.df = as.data.frame(matrix(ncol = v.p.len, nrow = 1))
+#
+#     if (!VIF & !part.eta) {
+#       my.std.error = c(my.coefficients$`Std. Error`, NA)
+#       my.estimate = c(my.coefficients$Estimate, NA)
+#       names(my.tables.df) = c("rownames",
+#                               "sumsq",
+#                               "df",
+#                               "est",
+#                               "std.err",
+#                               "f.val",
+#                               "p.val")
+#     } else if (!part.eta) {
+#       my.VIF = car::vif(my.model)
+#       names(my.tables.df) = c("rownames",
+#                               "sumsq",
+#                               "df",
+#                               "est",
+#                               "std.err",
+#                               "f.val",
+#                               "p.val",
+#                               "VIF")
+#     } else if (!VIF) {
+#       names(my.tables.df) = c("rownames",
+#                               "sumsq",
+#                               "df",
+#                               "est",
+#                               "std.err",
+#                               "f.val",
+#                               "p.val",
+#                               "p.eta")
+#     } else{
+#       my.VIF = car::vif(my.model)
+#       names(my.tables.df) = c("rownames",
+#                               "sumsq",
+#                               "df",
+#                               "est",
+#                               "std.err",
+#                               "f.val",
+#                               "p.val",
+#                               "p.eta",
+#                               "VIF")
+#     }
+#
+#   #### Make the double table entries ####
+#
+#   #### Was very annoying...took my frustration out on
+#   #### Variable names
+#
+#   factor.stupid = NULL
+#   factor.rownames = NULL
+#   num.of.levels = NULL
+#   ord.temp = 0
+#   if (!is.null(my.factor)) {
+#     for (i in 1:length(my.factor)) {
+#       factor.stupid = c(factor.stupid, grep(paste("^", my.factor[i], "$", sep =
+#                                                     ""), names(myDF)))
+#
+#         factor.rownames = c(factor.rownames, grep(
+#           paste("^", my.factor[i], "$", sep = ""),
+#           rownames(my.III.summary)
+#         ))
+#         num.of.levels = c(num.of.levels, length(levels(myDF[[factor.stupid[i]]])))
+#         # }else if(type=="glm"){
+#         #   factor.rownames=c(factor.rownames,{grep(paste("^",my.factor[i],"$",sep=""),rownames(my.III.summary))+1})
+#         #   num.of.levels=c(num.of.levels,length(levels(myDF[[factor.stupid[i]]])))
+#
+#     }
+#
+#   } else{
+#     factor.rownames = 0L
+#   }
+#
+#
+#
+#   #### Make phia stuff ####
+#   if(show.contrasts){
+#       if(!is.null(my.factor)){
+#       my.phia.reg=quick.contrast(my.model,skip.me=T,adjustment = adjustment,SS.type = SS.type,abbrev.length = abbrev.length)
+#       my.j=0
+#       my.big.phia=NULL
+#       phia.shift=0
+#       real.shift=0
+#       for(i in 1:dim(my.phia.reg)[1]){
+#         if(!is.na(my.phia.reg[i,1])){
+#           my.j=my.j+1
+#           real.shift=real.shift+phia.shift
+#           my.big.phia[[my.j]]=my.phia.reg[i,2:7]
+#         }else{
+#           my.big.phia[[my.j]][i-real.shift,]=my.phia.reg[i,2:7]
+#         }
+#         phia.shift=phia.shift+1
+#       }
+#
+#       my.phia.rownames=NULL
+#       my.phia.SS=NULL
+#       my.phia.value=NULL
+#       my.phia.F=NULL
+#       my.phia.p=NULL
+#       my.phia.err=NULL
+#       for(i in 1:{my.j}){
+#         my.phia.rownames[[i]]=my.big.phia[[i]]$names
+#         my.phia.SS[[i]]=my.big.phia[[i]]$`Sum of Sq`
+#         my.phia.value[[i]]=my.big.phia[[i]]$Value
+#         my.phia.F[[i]]=my.big.phia[[i]][,5]
+#         my.phia.p[[i]]=my.big.phia[[i]][,6]
+#
+#       }
+#     }
+#   }
+#
+#
+#
+#   my.factor.var = 1
+#   this.temp.var = 1
+#   this.shift.temp = 1
+#   yet.another.var = 1
+#   my.shift = 0
+#   other.temp = 2
+#   ord.temp = 0
+#   phia.temp=1
+#
+#     dang.length = length(rownames(my.III.summary))
+#
+#
+#
+#
+#   while (this.shift.temp < dang.length) {
+#     if (is.na(factor.rownames[my.factor.var])) {
+#       my.factor.rownames = 1
+#
+#     } else{
+#       my.factor.rownames = factor.rownames[my.factor.var]
+#
+#     }
+#     #### LOOP ####
+#     if (this.shift.temp == 1) {
+#       i = 1
+#       if(type=="ord" | type=="glm"){
+#         my.tables.df[this.temp.var, ] = c(
+#           "Intercept Change",
+#           NA,
+#           NA,
+#           NA,
+#           my.int.dev.total,
+#           my.int.dev.df,
+#           pchisq(my.int.dev.total,my.int.dev.df,lower.tail = F),
+#           rep(NA, v.p.rep))
+#
+#         this.temp.var=this.temp.var+1
+#       }
+#       while (i <= total.intercepts) {
+#         if (type == "lm") {
+#           my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp]
+#           my.df = my.III.summary$Df[this.shift.temp]
+#           my.est = my.estimate[this.shift.temp]
+#           my.std.err = my.std.error[this.shift.temp]
+#           my.f.val = my.III.summary$`F value`[this.shift.temp]
+#           my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
+#           my.tables.df[this.temp.var, ] = c(
+#             my.rownames[this.shift.temp],
+#             summary(my.model)[[4]][this.shift.temp,1],
+#             summary(my.model)[[4]][this.shift.temp,2],
+#             my.sumsq,
+#             my.df,
+#             my.f.val,
+#             my.p.val,
+#             rep(NA, v.p.rep)
+#           )
+#         } else if(type=="glm"){
+#           #### HERE IS WHERE I LEFT OFF!! ####
+#           # my.or = exp(my.estimate[this.shift.temp])
+#           # my.est = my.estimate[this.shift.temp]
+#           # my.z.val = my.summary$coefficients[this.shift.temp, 3]
+#           # my.std.err = my.std.error[this.shift.temp]
+#           #my.dev=my.III.summary$`LR Chisq`[this.shift.temp]
+#           #my.df=my.III.summary$Df[this.shift.temp]
+#           # my.p.val = my.summary$coefficients[{
+#           #   this.shift.temp
+#           #}, 4]
+#
+#           my.tables.df[this.temp.var, ] = c(
+#             paste(names(attr(my.model$model[[i]],"labels"))[1],"-",names(attr(my.model$model[[i]],"labels"))[2],sep=""),
+#             my.int.dev.or[i],
+#             my.int.dev.or.confint[1],
+#             my.int.dev.or.confint[2],
+#             my.int.dev[i],
+#             1,
+#             NA,
+#             rep(NA, v.p.rep))
+#
+#           #this.temp.var=this.temp.var+1
+#           #my.tables.df[this.temp.var,]=c("Treatment",NA,NA,NA,total.dev,total.df,dchisq(total.dev,total.df),rep(NA,v.p.rep))
+#
+#         }else{
+#           my.tables.df[this.temp.var, ] = c(
+#             my.int.names[i],
+#             my.int.dev.or[i],
+#             my.int.dev.or.confint[i,1],
+#             my.int.dev.or.confint[i,2],
+#             my.int.dev[i],
+#             NA,
+#             NA,
+#             rep(NA, v.p.rep))
+#
+#           #this.temp.var=this.temp.var+1
+#
+#         }
+#
+#         this.shift.temp = this.shift.temp + 1
+#
+#         this.temp.var = this.temp.var + 1
+#         i = i + 1
+#
+#       }
+#       if(type=="ord" | type=="glm"){
+#         my.tables.df[this.temp.var,]=c("Treatment Change",NA,NA,NA,treat.dev,vars.df,pchisq(treat.dev,vars.df,lower.tail = F))
+#         this.temp.var=this.temp.var+1
+#       }else{
+#         my.tables.df[this.temp.var,]=c("Treatment",NA,NA,treat.SS,treat.df,glance(my.model)[4],glance(my.model)[5],rep(NA,v.p.rep))
+#         this.temp.var=this.temp.var+1
+#       }
+#     } else if (this.shift.temp == my.factor.rownames) {
+#       if (type == "lm") {
+#         my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp]
+#         my.df = my.III.summary$Df[this.shift.temp]
+#         my.est = my.estimate[this.shift.temp]
+#         my.std.err = my.std.error[this.shift.temp]
+#         my.z.val = NA
+#         my.f.val = my.III.summary$`F value`[this.shift.temp]
+#         my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
+#         if(!VIF & !part.eta){
+#           my.tables.df[this.temp.var, ] = c(
+#             my.factor[yet.another.var],
+#             NA,
+#             NA,
+#             my.sumsq,
+#             my.df,
+#             my.f.val,
+#             my.p.val,
+#             rep(NA, v.p.rep)
+#           )
+#         }else if(part.eta & !VIF){
+#           my.p.eta = my.sumsq / my.total
+#           my.tables.df[this.temp.var, ] = c(
+#             my.factor[yet.another.var],
+#             NA,
+#             NA,
+#             my.sumsq,
+#             my.df,
+#             my.f.val,
+#             my.p.val,
+#             my.p.eta
+#           )
+#         }else if(!part.eta & VIF){
+#
+#           my.tables.df[this.temp.var, ] = c(
+#             my.factor[yet.another.var],
+#             NA,
+#             NA,
+#             my.sumsq,
+#             my.df,
+#             my.f.val,
+#             my.p.val,
+#             my.VIF[this.shift.temp - 1, 1]
+#           )
+#         }else{
+#           my.p.eta = my.sumsq / my.total
+#           my.tables.df[this.temp.var, ] = c(
+#             my.factor[yet.another.var],
+#             NA,
+#             NA,
+#             my.sumsq,
+#             my.df,
+#             my.f.val,
+#             my.p.val,
+#             my.p.eta,
+#             my.VIF[this.shift.temp - 1, 1]
+#           )
+#         }
+#       }else{
+#
+#         # my.or = NA
+#         # my.est = NA
+#         # my.std.err = NA
+#         # my.dev = my.III.summary$`LR Chisq`[ord.temp]
+#         # my.df = my.III.summary$Df[ord.temp]
+#         # my.p.val = my.III.summary$`Pr(>Chisq)`[ord.temp]
+#         my.tables.df[this.temp.var,]=c(my.factor[this.shift.temp-1],
+#                                        NA,
+#                                        NA,
+#                                        NA,
+#                                        drop1(new.model,test="Chi")$`LRT`[this.shift.temp],
+#                                        drop1(new.model,test="Chi")$`Df`[this.shift.temp],
+#                                        drop1(new.model,test="Chi")$`Pr(>Chi)`[this.shift.temp],
+#                                        rep(NA,v.p.rep))
+#         #
+#         # my.tables.df[this.temp.var, ] = c(my.factor[yet.another.var],
+#         #                                   my.or,
+#         #                                   my.est,
+#         #                                   my.std.err,
+#         #                                   my.dev,
+#         #                                   my.df,
+#         #                                   my.p.val)
+#         #ord.temp = ord.temp + 1
+#       }
+#       # else{
+#       #   my.or = NA
+#       #   my.est = NA
+#       #   my.std.err = NA
+#       #   my.dev = my.III.summary$Chisq[ord.temp]
+#       #   my.df = my.III.summary$Df[ord.temp]
+#       #   my.p.val = my.III.summary$`Pr(>Chisq)`[ord.temp]
+#       #   my.tables.df[this.temp.var, ] = c(my.factor[yet.another.var],
+#       #                                     my.or,
+#       #                                     my.est,
+#       #                                     my.std.err,
+#       #                                     my.dev,
+#       #                                     my.df,
+#       #                                     my.p.val)
+#       #   ord.temp = ord.temp + 1
+#       #
+#       # }
+#       yet.another.var = yet.another.var + 1
+#       this.temp.var = this.temp.var + 1
+#       this.shift.temp = this.shift.temp + 1
+#       if(type=="lm"){
+#         other.other.temp = 2
+#       }else{
+#         other.other.temp=1
+#       }
+#
+#       #### INTERACTION EFFECTS? NOT WORRIED YET ####
+#       if ({length(grepl(":", my.summary$coefficients[other.temp, 1])) >
+#           0}) {
+#
+#         #### I think the while should not be +1
+#         if(type=="glm" | type=="ord"){
+#           num.of.levels[my.factor.var]=num.of.levels[my.factor.var]-1
+#         }
+#         while (other.other.temp < {
+#           num.of.levels[my.factor.var] + 1
+#         }) {
+#           if (type == "lm") {
+#             if(show.contrasts){
+#               my.sumsq = NA
+#               my.df = NA
+#               my.est = my.estimate[other.temp]
+#               my.std.err = my.std.error[other.temp]
+#               #### NEED TO FIX ####
+#               my.f.val = {
+#                 my.summary$coefficients[other.temp, 3] ^ 2
+#               }
+#               my.p.val = my.summary$coefficients[other.temp, 4]
+#               my.tables.df[this.temp.var, ] = c(
+#                 my.phia.rownames[[phia.temp]][other.temp-1],
+#                 my.phia.value[[phia.temp]][other.temp-1],
+#                 my.est,
+#                 my.phia.SS[[phia.temp]][other.temp-1],
+#                 1,
+#                 my.phia.F[[phia.temp]][other.temp-1],
+#                 my.phia.p[[phia.temp]][other.temp-1],
+#                 rep(NA, v.p.rep)
+#               )
+#             }
+#             ord.temp=ord.temp + 1
+#           } else if (type == "glm") {
+#             # my.or = exp(my.estimate[other.temp])
+#             # my.est = my.estimate[other.temp]
+#             # my.std.err = my.std.error[other.temp]
+#             # my.z.val = my.summary$coefficients[other.temp, 3]
+#             # my.dev = my.III.summary$`LR Chisq`[other.temp]
+#             # my.df = my.III.summary$Df[other.temp]
+#             # my.p.val = my.summary$coefficients[other.temp, 4]
+#             # my.tables.df[this.temp.var, ] = c(my.rownames[other.temp],
+#             #                                   my.or,
+#             #                                   my.std.err,
+#             #                                   my.z.val,
+#             #                                   NA,
+#             #                                   NA,
+#             #                                   my.p.val)
+#             if(show.contrasts){
+#               my.tables.df[this.temp.var, ] = c(my.phia.rownames[other.temp-1],
+#                                                 vars.or[other.temp-1],
+#                                                 vars.or.confint[other.temp-1,1],
+#                                                 vars.or.confint[other.temp-1,2],
+#                                                 my.phia[other.temp-1,3],
+#                                                 my.phia[other.temp-1,4],
+#                                                 my.phia[other.temp-1,6],rep(NA,v.p.rep))
+#               #this.shift.temp = this.shift.temp + 1
+#             }
+#             ord.temp=ord.temp + 1
+#           } else{
+#             my.or = exp(my.estimate[other.temp + total.intercepts - 1])
+#             my.est = my.estimate[other.temp + total.intercepts - 1]
+#             my.std.err = my.std.error[other.temp + total.intercepts -
+#                                         1]
+#             my.z.val = my.summary$coefficients[{
+#               other.temp + total.intercepts - 1
+#             }, 3]
+#             #my.dev=my.III.summary$Chisq[other.temp]
+#             #my.df=my.III.summary$Df[other.temp]
+#             my.p.val = my.summary$coefficients[{
+#               other.temp + total.intercepts - 1
+#             }, 4]
+#             if (!VIF) {
+#               my.tables.df[this.temp.var, ] = c(my.rownames[other.temp +
+#                                                               total.intercepts - 1],
+#                                                 my.or,
+#                                                 my.std.err,
+#                                                 my.z.val,
+#                                                 NA,
+#                                                 NA,
+#                                                 my.p.val)
+#             } else{
+#               my.tables.df[this.temp.var, ] = c(my.rownames[other.temp +
+#                                                               total.intercepts - 1],
+#                                                 my.or,
+#                                                 my.std.err,
+#                                                 my.z.val,
+#                                                 NA,
+#                                                 NA,
+#                                                 my.p.val,
+#                                                 my.VIF[this.shift.temp - 1, 1])
+#
+#             }
+#             this.shift.temp = this.shift.temp + 1
+#           }
+#           this.temp.var = this.temp.var + 1
+#           other.temp = other.temp + 1
+#           other.other.temp = other.other.temp + 1
+#           the.length = the.length + 1
+#
+#         }
+#         phia.temp=phia.temp+1
+#         if(!show.contrasts){this.temp.var=this.temp.var-ord.temp}
+#       } else{
+#
+#       }
+#
+#       if (my.factor.var == 1) {
+#         my.shift = {
+#           my.shift + other.temp - 2
+#         }
+#
+#       } else{
+#         my.shift = my.shift + other.temp
+#
+#       }
+#
+#       my.factor.var = my.factor.var + 1
+#
+#     } else{
+#       if (type == "lm") {
+#         my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp]
+#         my.df = my.III.summary$Df[this.shift.temp]
+#         my.est = my.estimate[this.shift.temp]
+#         my.std.err = my.std.error[this.shift.temp]
+#         my.f.val = my.III.summary$`F value`[this.shift.temp]
+#         my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
+#         if (!VIF & !part.eta) {
+#           my.tables.df[this.temp.var, ] = c(
+#             rownames(my.III.summary)[this.shift.temp],
+#             summary(my.model)[[4]][this.shift.temp+ord.temp-1,1],
+#             summary(my.model)[[4]][this.shift.temp+ord.temp-1,2],
+#             my.sumsq,
+#             my.df,
+#             my.f.val,
+#             my.p.val
+#           )
+#         } else if (!part.eta) {
+#           my.tables.df[this.temp.var, ] = c(
+#             rownames(my.III.summary)[this.shift.temp],
+#             summary(my.model)[[4]][this.shift.temp+ord.temp-1,1],
+#             summary(my.model)[[4]][this.shift.temp+ord.temp-1,2],
+#             my.sumsq,
+#             my.df,
+#             my.f.val,
+#             my.p.val,
+#             my.VIF[this.shift.temp - 1, 1]
+#           )
+#         } else if (!VIF) {
+#           my.p.eta = my.sumsq / my.total
+#           my.tables.df[this.temp.var, ] = c(
+#             rownames(my.III.summary)[this.shift.temp],
+#             summary(my.model)[[4]][this.shift.temp+ord.temp-1,1],
+#             summary(my.model)[[4]][this.shift.temp+ord.temp-1,2],
+#             my.sumsq,
+#             my.df,
+#             my.f.val,
+#             my.p.val,
+#             my.p.eta
+#           )
+#         } else{
+#           my.p.eta = my.sumsq / my.total
+#           my.tables.df[this.temp.var, ] = c(
+#             rownames(my.III.summary)[this.shift.temp],
+#             summary(my.model)[[4]][this.shift.temp+ord.temp-1,1],
+#             summary(my.model)[[4]][this.shift.temp+ord.temp-1,2],
+#             my.sumsq,
+#             my.df,
+#             my.f.val,
+#             my.p.val,
+#             my.p.eta,
+#             my.VIF[this.shift.temp - 1, 1]
+#           )
+#         }
+#         ord.temp=ord.temp+1
+#       } else if (type == "glm") {
+#         # if (!is.null(my.factor)) {
+#         #   this.shift.temp = this.shift.temp - ord.temp-1
+#         # }
+#         # my.or = exp(my.estimate[this.shift.temp])
+#         # my.est = my.estimate[this.shift.temp]
+#         # my.std.err = my.std.error[this.shift.temp]
+#         # my.z.val = my.summary$coefficients[other.temp, 3]
+#         # my.dev = my.III.summary$`LR Chisq`[ord.temp]
+#         # my.df = my.III.summary$Df[ord.temp]
+#         # my.p.val = my.III.summary$`Pr(>Chisq)`[ord.temp]
+#         if (!VIF) {
+#           # my.tables.df[this.temp.var, ] = c(my.rownames[this.shift.temp],
+#           #                                   my.or,
+#           #                                   my.std.err,
+#           #                                   NA,
+#           #                                   my.dev,
+#           #                                   my.df,
+#           #                                   my.p.val)
+#           my.tables.df[this.temp.var,]=c(names(vars.or)[{this.shift.temp+sum(vars.dev.df[1:{this.shift.temp-1}],na.rm = T)-yet.another.var+1}],
+#                                          vars.or[{this.shift.temp+sum(vars.dev.df[1:{this.shift.temp-1}],na.rm = T)-yet.another.var+1}],
+#                                          vars.or.confint[{this.shift.temp+sum(vars.dev.df[1:{this.shift.temp-1}],na.rm = T)-yet.another.var+1},1],
+#                                          vars.or.confint[{this.shift.temp+sum(vars.dev.df[1:{this.shift.temp-1}],na.rm = T)-yet.another.var+1},2],
+#                                          vars.dev[this.shift.temp],
+#                                          vars.dev.df[this.shift.temp],
+#                                          vars.dev.p[this.shift.temp],rep(NA,v.p.len))
+#         } else{
+#           my.tables.df[this.temp.var, ] = c(names(vars.or)[{this.shift.temp+sum(vars.dev.df[1:{this.shift.temp-1}],na.rm = T)-yet.another.var+1}],
+#                                             vars.or[{this.shift.temp+sum(vars.dev.df[1:{this.shift.temp-1}],na.rm = T)-yet.another.var+1}],
+#                                             vars.or.confint[{this.shift.temp+sum(vars.dev.df[1:{this.shift.temp-1}],na.rm = T)-yet.another.var+1},1],
+#                                             vars.or.confint[{this.shift.temp+sum(vars.dev.df[1:{this.shift.temp-1}],na.rm = T)-yet.another.var+1},2],
+#                                             vars.dev[this.shift.temp],
+#                                             vars.dev.df[this.shift.temp],
+#                                             vars.dev.p[this.shift.temp],
+#                                             rep(NA,v.p.len))
+#         }
+#         # if (!is.null(my.factor)) {
+#         #   this.shift.temp = this.shift.temp + ord.temp+1
+#         # }
+#         yet.another.var=yet.another.var+1
+#         ord.temp = ord.temp + 1
+#       } else{
+#         if (!is.null(my.factor)) {
+#           this.shift.temp = this.shift.temp - ord.temp
+#         }else{
+#           this.shift.temp=this.shift.temp-total.intercepts
+#         }
+#         my.tables.df[this.temp.var, ] = c(names(vars.or)[this.shift.temp],
+#                                           vars.or[{this.shift.temp}],
+#                                           if(!is.null(dim(vars.or.confint))){
+#                                             vars.or.confint[{this.shift.temp},1]
+#                                           }else{
+#                                             vars.or.confint[1]
+#                                           },
+#                                           if(!is.null(dim(vars.or.confint))){
+#                                             vars.or.confint[{this.shift.temp},2]
+#                                           }else{
+#                                             vars.or.confint[2]
+#                                           },
+#                                           vars.dev[this.shift.temp-ord.temp],
+#                                           vars.dev.df[this.shift.temp-ord.temp],
+#                                           vars.dev.p[this.shift.temp-ord.temp],
+#                                           rep(NA,v.p.len))
+#         if (!is.null(my.factor)) {
+#           this.shift.temp = this.shift.temp + ord.temp
+#         }else{
+#           this.shift.temp=this.shift.temp+total.intercepts
+#         }
+#         #ord.temp = ord.temp + 1
+#       }
+#       this.shift.temp = this.shift.temp + 1
+#       this.temp.var = this.temp.var + 1
+#
+#     }
+#   }
+#
+#   if (type == "lm") {
+#     my.tables.df[this.temp.var, ] = c(
+#       "Residuals",
+#       NA,
+#       NA,
+#       my.III.summary$`Sum Sq`[this.shift.temp],
+#       my.III.summary$Df[this.shift.temp],
+#       NA,
+#       NA,
+#       rep(NA, v.p.rep)
+#     )
+#     my.tables.df[this.temp.var + 1, ] = c("Total Change",
+#                                           NA,
+#                                           NA,
+#                                           my.total,
+#                                           my.df.total,
+#                                           rep(NA, v.p.rep + 2))
+#     my.tables.df[this.temp.var+2,]=c("Total SS",NA,NA,my.total+my.III.summary$`Sum Sq`[1],my.df.total+1,rep(NA,v.p.rep+2))
+#     if (!VIF & !part.eta) {
+#
+#     } else if (!VIF) {
+#       my.tables.df$p.eta = as.numeric(my.tables.df$p.eta)
+#     } else if (!part.eta) {
+#       my.tables.df$VIF = as.numeric(my.tables.df$VIF)
+#     } else{
+#       my.tables.df$p.eta = as.numeric(my.tables.df$p.eta)
+#       my.tables.df$VIF = as.numeric(my.tables.df$VIF)
+#     }
+#     my.tables.df$f.val = as.numeric(my.tables.df$f.val)
+#     my.tables.df$est = as.numeric(my.tables.df$est)
+#     my.tables.df$sumsq = as.numeric(my.tables.df$sumsq)
+#     my.tables.df$df = as.numeric(my.tables.df$df)
+#     my.tables.df$std.err = as.numeric(my.tables.df$std.err)
+#     my.tables.df$p.val = as.numeric(my.tables.df$p.val)
+#   } else{
+#
+#     my.tables.df[this.temp.var,]=c("Total Change",NA,NA,NA,total.dev.change,total.dev.change.df,pchisq(total.dev.change,total.dev.change.df,lower.tail = F),rep(NA,v.p.rep))
+#     my.tables.df[this.temp.var+1,]=c("Residuals",NA,NA,NA,resid.dev,resid.df,NA,rep(NA,v.p.rep))
+#     my.tables.df[this.temp.var+2,]=c("Total",NA,NA,NA,total.dev,total.df,NA,rep(NA,v.p.rep))
+#
+#
+#     #my.tables.df[this.temp.var,] = c("Change from Null", NA, NA, NA, ddeviance2, ddf2, fit2)
+#     my.tables.df$p.odd = as.numeric(my.tables.df$p.odd)
+#     my.tables.df$p.odd.2.5 = as.numeric(my.tables.df$p.odd.2.5)
+#     my.tables.df$p.odd.97.5 = as.numeric(my.tables.df$p.odd.97.5)
+#     my.tables.df$deviance=as.numeric(my.tables.df$deviance)
+#     my.tables.df$p.val=as.numeric(my.tables.df$p.val)
+#     if (VIF) {
+#       my.tables.df$VIF = as.numeric(my.tables.df$VIF)
+#     }
+#   }
+#
+#
+#
+#   #### Make custom glance stats ####
+#   if(do.glance){
+#     #### Can eventually make it options
+#     if (type == "lm") {
+#       glance_stats=as.data.frame(matrix(ncol={7+v.p.rep},nrow=1))
+#       glance_stats[1,]=c(paste("Method: ","QR Decomposition",if(show.contrasts){paste("<br />Adjustment Method: ",adjustment,sep="")},sep=""),rep(NA,6),rep(NA,v.p.rep))
+#
+#       # glance_stats = broom::glance(my.model)
+#       # glance_stats = tidyr::gather(glance_stats)
+#       #
+#       #
+#       # glance_stats[3:{
+#       #   5 + v.p.rep
+#       # }] = NA
+#       # glance_stats[6 + v.p.rep] = c(glance_stats$key[7:8],
+#       #                               NA,
+#       #                               glance_stats$key[9:11],
+#       #                               NA,
+#       #                               NA,
+#       #                               NA,
+#       #                               NA,
+#       #                               NA)
+#       # glance_stats[7 + v.p.rep] = c(glance_stats$value[7:8],
+#       #                               NA,
+#       #                               glance_stats$value[9:11],
+#       #                               NA,
+#       #                               NA,
+#       #                               NA,
+#       #                               NA,
+#       #                               NA)
+#       # glance_stats = glance_stats[-7:-11, ]
+#       # glance_stats = glance_stats[-3, ]
+#       # glance_stats = glance_stats[-5, ]
+#
+#     } else if (type == "glm") {
+#       glance_stats=as.data.frame(matrix(ncol={7+v.p.rep},nrow=1))
+#       glance_stats[1,]=c(paste("Family: ",new.model$family$family," <br /> Link: ",new.model$family$link,if(show.contrasts){paste(" <br />Adjustment: ",adjustment,sep="")},sep=""),rep(NA,6),rep(NA,v.p.rep))
+#
+#       # glance_stats = broom::glance(my.model)
+#       # glance_stats = tidyr::gather(glance_stats)
+#       #
+#       #
+#       # glance_stats[[3]] = c("Family: ", "Link: ", rep(NA, 5))
+#       # glance_stats[[4]] = c(my.model$family$family,
+#       #                       my.model$family$link,
+#       #                       rep(NA, 5))
+#       # glance_stats[5:{
+#       #   5 + v.p.rep
+#       # }] = NA
+#       # glance_stats[6 + v.p.rep] = c(glance_stats$key[3:6], NA, NA, NA)
+#       # glance_stats[7 + v.p.rep] = c(glance_stats$value[3:6], NA, NA, NA)
+#       # glance_stats[[1]] = c("Null.dev", "Chi-Sq", "dF", "Pr(>Chisq)", NA, NA, NA)
+#       # glance_stats[[2]] = c(
+#       #   glance_stats$value[1],
+#       #   ddeviance2,
+#       #   ddf2,
+#       #   pvalString(fit2, digits = 3, format = "default"),
+#       #   NA,
+#       #   NA,
+#       #   NA
+#       # )
+#       # glance_stats = glance_stats[-5:-7, ]
+#       # glance_stats2=as.data.frame(matrix(ncol=7,nrow=1))
+#       # glance_stats2[1,]=c(glance_stats$key[1],glance_stats$value[1],NA,NA,NA,glance_stats$key[6],glance_stats$value[6])
+#       # glance_stats2[2,]=c(glance_stats$key[2],glance_stats$value[2],NA,NA,NA,glance_stats$key[7],glance_stats$value[7])
+#       # glance_stats2[3,]=c(glance_stats$key[3],glance_stats$value[3],NA,NA,NA,glance_stats$key[4],glance_stats$value[4])
+#       # glance_stats=glance_stats2
+#     } else if(type=="ord"){
+#       glance_stats=as.data.frame(matrix(ncol={7+v.p.rep},nrow=1))
+#       glance_stats[1,]=c(paste("Family: Ordinal <br /> Link: ",new.model$info$link,sep=""),rep(NA,6),rep(NA,v.p.rep))
+#       # glance_stats[[1]]=c("Null.dev","Chi-Sq","dF","Pr(>Chisq)")
+#       # glance_stats[[2]]=c({{-2*my.model$logLik}-ddeviance2},ddeviance2,ddf2,pvalString(fit2, digits = 3, format = "default"))
+#       # glance_stats[[3]]=c("Family: ","Link: ",NA,NA)
+#       # glance_stats[[4]]=c("ordinal",levels(my.model$info$link),NA,NA)
+#       # glance_stats[[5:{5+v.p.rep}]]=c(NA,NA,NA,NA)
+#       # glance_stats[[{6+v.p.rep}]]=c("logLik","AIC","BIC","deviance")
+#       # glance_stats[[{7+v.p.rep}]]=c(my.model$logLik,as.numeric(levels(my.model$info$AIC)),BIC(my.model),{-2*my.model$logLik})
+#     }else{
+#
+#     }
+#   }
+#   #### For total
+#   the.length = the.length + 1
+#   this.temp.var = this.temp.var + 1
+#   #### Make table ####
+#
+#   options(pixie_interactive = pix.int,
+#           pixie_na_string = "")
+#
+#
+#   if (type == "lm") {
+#     the.length=the.length+2
+#     my.dust = pixiedust::dust(my.tables.df) %>%
+#       sprinkle(cols = "p.val", fn = quote(pvalString(
+#         value, digits = 3, format = "default"
+#       ))) %>%
+#       sprinkle_print_method(pix.method) %>%
+#       sprinkle_na_string() %>%
+#       sprinkle(
+#         rows = 1:the.length,
+#         cols = v.p.len,
+#         border = "right",
+#         border_color = "black"
+#       ) %>%
+#       sprinkle(
+#         rows = 1:the.length,
+#         cols = 1,
+#         border = "left",
+#         border_color = "black"
+#       ) %>%
+#       sprinkle(
+#         rows=2,
+#         cols=1:v.p.len,
+#         border=c("top","bottom")
+#       )%>%
+#       sprinkle(rows=this.temp.var-1,
+#                border="top")%>%
+#       sprinkle(
+#         rows = 1,
+#         cols = 1:v.p.len,
+#         border = c("top", "bottom"),
+#         border_color = "black",
+#         part = "head"
+#       ) %>%
+#       sprinkle(rows=1,cols=1,border="left",part="head")%>%
+#       sprinkle(rows=1,cols=v.p.len,border="right",part="head")%>%
+#       sprinkle(
+#         rows = this.temp.var+1,
+#         cols = 1:v.p.len,
+#         border = "bottom",
+#         border_color = "black"
+#       )
+#
+#     if (!VIF & !part.eta) {
+#       my.dust = my.dust %>%
+#         sprinkle(cols = c("sumsq", "est", "std.err", "f.val"),
+#                  round = 2) %>%
+#         sprinkle(cols = c(2, 3, 4, 5, 6, 7), pad = 5) %>%
+#         sprinkle_colnames(
+#           "Variable",
+#           "Estimate",
+#           "Std. Error",
+#           paste("Type ", SS.type, "<br /> Sums of Sq", sep = ""),
+#           "df",
+#           "F-value",
+#           "Pr(>F)"
+#         ) %>%
+#         sprinkle_align(rows = 1,
+#                        halign = "center",
+#                        part = "head") %>%
+#         sprinkle_pad(rows = 1,
+#                      pad = 5,
+#                      part = "head")
+#
+#     } else if (!VIF) {
+#       my.dust = my.dust %>%
+#         sprinkle(
+#           cols = c("sumsq", "est", "std.err", "f.val", "p.eta"),
+#           round = 2
+#         ) %>%
+#         sprinkle(cols = c(2, 3, 4, 5, 6, 7, 8), pad = 5) %>%
+#         sprinkle_colnames(
+#           "Variable",
+#           "Estimate",
+#           "Std. Error",
+#           paste("Type ", SS.type, "<br /> Sums of Sq", sep = ""),
+#           "df",
+#           "F-value",
+#           "Pr(>F)",
+#           "Part <br /> eta"
+#         ) %>%
+#         sprinkle_align(rows = 1,
+#                        halign = "center",
+#                        part = "head") %>%
+#         sprinkle_pad(rows = 1,
+#                      pad = 5,
+#                      part = "head")
+#
+#     } else if (!part.eta) {
+#       my.dust = my.dust %>%
+#         sprinkle(
+#           cols = c("sumsq", "est", "std.err", "f.val", "VIF"),
+#           round = 2
+#         ) %>%
+#         sprinkle(cols = c(2, 3, 4, 5, 6, 7, 8), pad = 5) %>%
+#         sprinkle_colnames(
+#           "Variable",
+#           "Estimate",
+#           "Std. Error",
+#           paste("Type ", SS.type, "<br /> Sums of Sq", sep = ""),
+#           "df",
+#           "F-value",
+#           "Pr(>F)",
+#           "VIF"
+#         ) %>%
+#         sprinkle_align(rows = 1,
+#                        halign = "center",
+#                        part = "head") %>%
+#         sprinkle_pad(rows = 1,
+#                      pad = 5,
+#                      part = "head")
+#
+#     } else{
+#       my.dust = my.dust %>%
+#         sprinkle(
+#           cols = c("sumsq", "est", "std.err", "f.val", "p.eta", "VIF"),
+#           round = 2
+#         ) %>%
+#         sprinkle(cols = c(2, 3, 4, 5, 6, 7, 8), pad = 5) %>%
+#         sprinkle_colnames(
+#           "Variable",
+#           "Estimate",
+#           "Std. Error",
+#           paste("Type ", SS.type, "<br /> Sums of Sq", sep = ""),
+#           "df",
+#           "F-value",
+#           "Pr(>F)",
+#           "Part <br /> eta",
+#           "VIF"
+#         ) %>%
+#         sprinkle_align(rows = 1,
+#                        halign = "center",
+#                        part = "head") %>%
+#         sprinkle_pad(rows = 1,
+#                      pad = 5,
+#                      part = "head")
+#
+#     }
+#
+#   } else if (type == "glm2") {
+#     my.dust = pixiedust::dust(my.tables.df) %>%
+#       sprinkle(cols = "p.val", fn = quote(pvalString(
+#         value, digits = 3, format = "default"
+#       ))) %>%
+#       sprinkle_print_method(pix.method) %>%
+#       sprinkle_na_string() %>%
+#       sprinkle(cols = 2:5, round = 2) %>%
+#       sprinkle(cols = c(2, 3, 4, 5, 6, 7), pad = 5) %>%
+#       sprinkle(cols = 2:{7+v.p.rep},
+#                pad = 5,
+#                part = "head") %>%
+#       sprinkle(
+#         rows = {
+#           this.temp.var - 2
+#         },
+#         cols = 1:v.p.len,
+#         border = "bottom",
+#         border_color = "black"
+#       ) %>%
+#       sprinkle(
+#         rows = 1:the.length,
+#         cols = 1:v.p.len,
+#         border = "right",
+#         border_color = "black"
+#       ) %>%
+#       sprinkle(
+#         rows = 1:the.length,
+#         cols = 1,
+#         border = "left",
+#         border_color = "black"
+#       ) %>%
+#       sprinkle(
+#         rows = 1,
+#         cols = 1:v.p.len,
+#         border = c("top", "bottom", "left", "right"),
+#         border_color = "black",
+#         part = "head"
+#       ) %>%
+#       sprinkle(
+#         rows = this.temp.var - 1,
+#         cols = 1:v.p.len,
+#         border = "bottom",
+#         border_color = "black"
+#       ) %>%
+#       sprinkle_align(rows = 1,
+#                      halign = "center",
+#                      part = "head")
+#
+#     if (!VIF) {
+#       my.dust = my.dust %>% sprinkle_colnames("Variable",
+#                                               "Odds Ratio",
+#                                               "Std. Error",
+#                                               "z-Value",
+#                                               "Deviance",
+#                                               "df",
+#                                               "p-Value")
+#     } else{
+#       my.dust = my.dust %>% sprinkle_colnames(
+#         "Variable",
+#         "Odds Ratio",
+#         "Std. Error",
+#         "z-Value",
+#         "Deviance",
+#         "df",
+#         "p-Value",
+#         "VIF"
+#       ) %>%
+#         sprinkle_round(cols = 8, round = 2)
+#     }
+#
+#   } else{
+#     my.dust = pixiedust::dust(my.tables.df) %>%
+#       sprinkle(cols = "p.val", fn = quote(pvalString(
+#         value, digits = 3, format = "default"
+#       ))) %>%
+#       sprinkle_print_method(pix.method) %>%
+#       sprinkle_na_string() %>%
+#       sprinkle(cols = 2:5, round = 2) %>%
+#       sprinkle(cols = c(2, 3, 4, 5, 6, 7), pad = 5) %>%
+#       sprinkle(cols = 2:7,
+#                pad = 5,
+#                part = "head") %>%
+#       sprinkle(
+#         rows = this.temp.var+1,
+#         cols = 1:7,
+#         border = "bottom",
+#         border_color = "black"
+#       ) %>%
+#       sprinkle(
+#         rows = 1,
+#         cols = 1:2,
+#         border = c("top", "bottom"),
+#         border_color = "black",
+#         part = "head"
+#       ) %>%
+#       sprinkle(
+#         rows = 1,
+#         cols = 3:4,
+#         border = c("top", "bottom"),
+#         border_color = "black",
+#         part = "head"
+#       ) %>%
+#       sprinkle(
+#         rows = 1,
+#         cols = 5:{7+v.p.rep},
+#         border = c("top", "bottom"),
+#         border_color = "black",
+#         part = "head"
+#       ) %>%
+#       sprinkle(
+#         rows = this.temp.var - 1,
+#         cols = 1:7,
+#         border = "bottom",
+#         border_color = "black"
+#       ) %>%
+#       sprinkle(
+#         rows = 1,
+#         cols = 1:7,
+#         border = "bottom",
+#         border_color = "black"
+#       ) %>%
+#       sprinkle(
+#         rows = this.temp.var - 2,
+#         cols = 1:7,
+#         border = "bottom",
+#         border_color = "black"
+#       ) %>%
+#       sprinkle(
+#         rows = 1+total.intercepts,
+#         cols = 1:7,
+#         border = "bottom",
+#         border_color = "black"
+#       ) %>%
+#       sprinkle(
+#         rows = 2+total.intercepts,
+#         cols = 1:7,
+#         border = "bottom",
+#         border_color = "black"
+#       ) %>%
+#       sprinkle_colnames("Variable",
+#                         "Odds Ratio",
+#                         "Conf. <br /> 2.5%","Int. <br /> 97.5%",
+#                         "Deviance",
+#                         "df",
+#                         "Pr(>Chi)")%>%
+#       sprinkle_border(cols=1,border=c("left","right"))%>%
+#       sprinkle_border(cols={7+v.p.rep},border="right")%>%
+#       sprinkle_border(cols=1,border=c("left","right"),part="head")%>%
+#       sprinkle_border(cols={7+v.p.rep},border="right",part="head")
+#   }
+#   if(do.glance){
+#     if (type == "lm") {
+#       my.dust = pixiedust::redust(my.dust, glance_stats, part = "foot") %>%
+#         sprinkle_na_string(part = "foot") %>%
+#         sprinkle(rows=1,merge=T,halign="center",part="foot")
+#       # my.dust = pixiedust::redust(my.dust, glance_stats, part = "foot") %>%
+#       #   sprinkle(cols = c(2, {
+#       #     7 + v.p.rep
+#       #   }),
+#       #   round = 3,
+#       #   part = "foot") %>%
+#       #   sprinkle(cols = 3:{
+#       #     5 + v.p.rep
+#       #   },
+#       #   replace = c(rep("", {
+#       #     12 + 4 * v.p.rep
+#       #   })),
+#       #   part = "foot") %>%
+#       #   sprinkle(
+#       #     cols = 1,
+#       #     replace = c("R-Square", "Adj R-Sq", "F-Statistic", "P-Value"),
+#       #     part = "foot"
+#       #   ) %>%
+#       #   sprinkle(
+#       #     cols = 2,
+#       #     rows = 4,
+#       #     fn = quote(pvalString(
+#       #       value, digits = 3, format = "default"
+#       #     )),
+#       #     part = "foot"
+#       #   ) %>%
+#       #   sprinkle(
+#       #     cols = 1:v.p.len,
+#       #     rows = 1,
+#       #     halign = "center",
+#       #     part = "head"
+#       #   ) %>%
+#       #   sprinkle_width(cols = 1,
+#       #                  width = 90,
+#       #                  width_units = "pt") %>%
+#       #   sprinkle_width(cols = 2,
+#       #                  width = 108,
+#       #                  width_units = "pt") %>%
+#       #   sprinkle_width(cols = 4,
+#       #                  width = 62,
+#       #                  width_units = "pt") %>%
+#       #   sprinkle_width(cols = 5,
+#       #                  width = 68,
+#       #                  width_units = "pt") %>%
+#       #   sprinkle_width(cols = 6,
+#       #                  width = 68,
+#       #                  width_units = "pt") %>%
+#       #   sprinkle_width(cols = 7,
+#       #                  width = 71,
+#       #                  width_units = "pt") %>%
+#       #   sprinkle(cols = 2,
+#       #            halign = "left",
+#       #            part = "foot")
+#     } else{
+#       my.dust = pixiedust::redust(my.dust, glance_stats, part = "foot") %>%
+#         sprinkle_na_string(part = "foot") %>%
+#         sprinkle(rows=1,merge=T,halign="center",part="foot")
+#     }
+#   }
+#   if (pix.int) {
+#     return(my.dust)
+#   } else{
+#     my.dust.print = print(my.dust, quote = F)[1]
+#     return(my.dust.print)
+#   }
+#
+# }
+
+# quick.reg.table.default=function(my.model, myDF=my.found.df, my.factor=NULL, SS.type=3, pix.int=T,pix.method="html",type=my.reg.type,test.stat="Wilks"){
+#   library(pixiedust)
+#   library(broom)
+#
+#   #### Find type
+#   # my.call=as.character(my.model$call)
+#   # my.split.call=strsplit(my.call,"\\\\(")
+#   # my.reg.type2=my.split.call[[1]][1]
+#   # if(my.reg.type2=="lm" | my.reg.type2 == "stats::lm"){
+#   #   my.reg.type="lm"
+#   # }else if(my.reg.type2=="glm" | my.reg.type2== "stats::glm"){
+#   #   my.reg.type="glm"
+#   # }else if(my.reg.type2=="manova" | my.reg.type2=="stats::manova"){
+#   #   my.reg.type="manova"
+#   # }else if(my.reg.type2=="clm" | my.reg.type2=="ordinal::clm"){
+#   #   my.reg.type="ord"
+#   # }else{
+#   #   stop("Type not supported")
+#   # }
+#   my.found.df=my.model$call$data
+#   if(is.null(my.found.df)){
+#     stop(paste("No data frame found"))
+#   }
+#
+#   #### Make factor list
+#   if(type=="manova" | type=="stats::manova"){
+#     x3=capture.output(car::Anova(my.model,type=SS.type,test=test.stat))
+#     my.manova.test=data.frame(matrix(ncol=7,nrow=1))
+#     my.var.temp=4
+#
+#     while(my.var.temp<{length(x3)-1}){
+#
+#       test=strsplit(x3[my.var.temp],"\\\\s+")
+#
+#       if(length(test[[1]])==9){
+#
+#         test2=test[[1]][-9]
+#         test2=test2[-7]
+#
+#       }else if(length(test[[1]])==8){
+#
+#         test2=test[[1]][-8]
+#
+#       }else{
+#
+#         test2=test[[1]]
+#       }
+#
+#       my.manova.test[{my.var.temp-3},]=test2
+#       my.var.temp=my.var.temp+1
+#
+#     }
+#
+#     my.manova.test[[2]]=as.numeric(my.manova.test[[2]])
+#     my.manova.test[[3]]=as.numeric(my.manova.test[[3]])
+#     my.manova.test[[4]]=as.numeric(my.manova.test[[4]])
+#     my.manova.test[[5]]=as.numeric(my.manova.test[[5]])
+#     my.manova.test[[6]]=as.numeric(my.manova.test[[6]])
+#     my.manova.test[[7]]=as.numeric(my.manova.test[[7]])
+#
+#     options(pixie_interactive = pix.int)
+#     my.manova.pixie=pixiedust::dust(my.manova.test)%>%
+#       sprinkle_print_method(pix.method)%>%
+#       sprinkle(cols="X7",fn=quote(pvalString(value,digits=3,format="default")))%>%
+#       sprinkle(cols="X3",round=3)%>%
+#       sprinkle_colnames("","df",paste(test.stat," <br /> Statistic"),"approx <br /> F-value","num df","den df","Pr(>F)")%>%
+#       sprinkle(cols=1:7,rows={length(x3)-5},border=c("bottom","left","right"))%>%
+#       sprinkle(cols=1:7,pad=10)%>%
+#       sprinkle(cols=1:7,rows=1:{length(x3)-5},border=c("left","right"))%>%
+#       sprinkle(cols=1:7,rows=1,border=c("top","bottom","left","right"),part="head")%>%
+#       sprinkle(cols=1,rows=1,border="left",part="head")%>%
+#       sprinkle(cols=7,rows=1,border="right",part="head")%>%
+#       sprinkle_width(cols=1,rows=1:2,width=90,width_units="pt")%>%
+#       sprinkle_width(cols=2,rows=1:2,width=30,width_units="pt")%>%
+#       sprinkle_width(cols=3,width=60,width_units="pt")%>%
+#       sprinkle_width(cols=4,width=60,width_units="pt")%>%
+#       sprinkle_width(cols=5,width=50,width_units="pt")%>%
+#       sprinkle_width(cols=6,width=50,width_units="pt")%>%
+#       sprinkle_width(cols=7,width=70,width_units="pt")%>%
+#       sprinkle(rows=1,halign="center",part="head")
+#
+#
+#     if(pix.int){
+#       return(my.manova.pixie)
+#     }else{
+#       my.manova.pixie=print(my.manova.pixie,quote=F)[1]
+#       return(my.manova.pixie)
+#     }
+#   }else{
+#     #### Use car::Anova to get SS Type 3
+#
+#     my.summary=summary(my.model)
+#     my.coefficients=my.summary$coefficients
+#     my.coefficients=as.data.frame(my.coefficients)
+#     my.III.summary=car::Anova(my.model,type=SS.type)
+#     if(type=="glm" & is.null(my.factor)){
+#       the.length=dim(my.III.summary)[1]+1
+#     }else{
+#       the.length=dim(my.III.summary)[1]
+#     }
+#
+#
+#     if(type=="lm"){
+#       #### Calculate total SS
+#       my.total=sum(my.III.summary$`Sum Sq`[2:length(my.III.summary$`Sum Sq`)])
+#       my.df.total=sum(my.III.summary$Df[2:length(my.III.summary$Df)])
+#       total.intercepts=1
+#       my.rownames=c(rownames(my.summary$coefficients),"Residuals","Total")
+#     }else if(type=="glm"){
+#       #### Calculate model deviance stats
+#       ddeviance2=my.model$null.deviance-my.model$deviance
+#       ddf2=my.model$df.null-my.model$df.residual
+#       fit2=1-pchisq(ddeviance2,ddf2)
+#       total.intercepts=1
+#       my.rownames=c(rownames(my.summary$coefficients),"Total")
+#     }else if(type=="ord"){
+#       my.temp.ord=update(my.model,~1)
+#       ddeviance2=my.model$logLik-my.temp.ord$logLik
+#       ddf2=my.model$edf-my.temp.ord$edf
+#       fit2=1-pchisq(ddeviance2,ddf2)
+#       total.intercepts=my.temp.ord$edf
+#       my.rownames=c(rownames(my.summary$coefficients),"Total")
+#     }else{
+#       print("Error")
+#       return()
+#     }
+#
+#
+#
+#     my.std.error=c(my.coefficients$`Std. Error`,NA)
+#     my.estimate=c(my.coefficients$Estimate,NA)
+#     my.tables.df=as.data.frame(matrix(ncol=7,nrow=1))
+#
+#     if(type=="lm"){
+#       names(my.tables.df)=c("rownames","sumsq","df","est","std.err","f.val","p.val")
+#     }else{
+#       names(my.tables.df)=c("var","od.rat","std.err","z.val","dev","df","p.val")
+#     }
+#
+#     #### Make the double table entries ####
+#
+#     #### Was very annoying...took my frustration out on
+#     #### Variable names
+#
+#     factor.stupid=NULL
+#     factor.rownames=NULL
+#     num.of.levels=NULL
+#     ordinal.temp=0
+#     if(!is.null(my.factor)){
+#
+#       for(i in 1:length(my.factor)){
+#         factor.stupid=c(factor.stupid,grep(paste("^",my.factor[i],"$",sep=""),names(myDF)))
+#
+#         if(type=="lm"){
+#           factor.rownames=c(factor.rownames,grep(paste("^",my.factor[i],"$",sep=""),rownames(my.III.summary)))
+#           num.of.levels=c(num.of.levels,length(levels(myDF[[factor.stupid[i]]])))
+#           # }else if(type=="glm"){
+#           #   factor.rownames=c(factor.rownames,{grep(paste("^",my.factor[i],"$",sep=""),rownames(my.III.summary))+1})
+#           #   num.of.levels=c(num.of.levels,length(levels(myDF[[factor.stupid[i]]])))
+#         }else{
+#           factor.rownames=c(factor.rownames,{grep(paste("^",my.factor[i],"$",sep=""),rownames(my.III.summary))+total.intercepts+sum(num.of.levels)-ordinal.temp})
+#           num.of.levels=c(num.of.levels,length(levels(myDF[[factor.stupid[i]]])))
+#           ordinal.temp=ordinal.temp+1
+#         }
+#       }
+#
+#     }else{
+#
+#       factor.rownames=0L
+#
+#     }
+#
+#
+#     my.factor.var=1
+#     this.temp.var=1
+#     this.shift.temp=1
+#     yet.another.var=1
+#     my.shift=0
+#     other.temp=2
+#     ord.temp=1
+#     if(type=="lm"){
+#       dang.length=length(rownames(my.III.summary))
+#     }else if (type=="glm"){
+#       dang.length=total.intercepts+length(rownames(my.III.summary))+max({sum(num.of.levels)-length(my.factor)},0)+1
+#     }else{
+#       dang.length=total.intercepts+length(rownames(my.III.summary))+max({sum(num.of.levels)-length(my.factor)},0)+1
+#       #dang.length=7
+#     }
+#
+#     while(this.shift.temp<dang.length){
+#
+#       if(is.na(factor.rownames[my.factor.var])){
+#
+#         my.factor.rownames=1
+#
+#       }else{
+#
+#         my.factor.rownames=factor.rownames[my.factor.var]
+#
+#       }
+#       if(this.shift.temp==1){
+#         i=1
+#         while(i<=total.intercepts){
+#           if(type=="lm"){
+#             my.sumsq=my.III.summary$`Sum Sq`[this.shift.temp]
+#             my.df=my.III.summary$Df[this.shift.temp]
+#             my.est=my.estimate[this.shift.temp]
+#             my.std.err=my.std.error[this.shift.temp]
+#             my.f.val=my.III.summary$`F value`[this.shift.temp]
+#             my.p.val=my.III.summary$`Pr(>F)`[this.shift.temp]
+#             my.tables.df[this.temp.var,]=c(my.rownames[this.shift.temp],my.sumsq,my.df,my.est,my.std.err,my.f.val,my.p.val)
+#           }else{
+#             my.or=exp(my.estimate[this.shift.temp])
+#             my.est=my.estimate[this.shift.temp]
+#             my.z.val=my.summary$coefficients[this.shift.temp,3]
+#             my.std.err=my.std.error[this.shift.temp]
+#             #my.dev=my.III.summary$`LR Chisq`[this.shift.temp]
+#             #my.df=my.III.summary$Df[this.shift.temp]
+#             my.p.val=my.summary$coefficients[{this.shift.temp},4]
+#             my.tables.df[this.temp.var,]=c(my.rownames[this.shift.temp],my.or,my.std.err,my.z.val,NA,NA,my.p.val)
+#           }
+#           this.shift.temp=this.shift.temp+1
+#           this.temp.var=this.temp.var+1
+#           i=i+1
+#         }
+#       }else if(this.shift.temp==my.factor.rownames){
+#         if(type=="lm"){
+#           my.sumsq=my.III.summary$`Sum Sq`[this.shift.temp]
+#           my.df=my.III.summary$Df[this.shift.temp]
+#           my.est=NA
+#           my.std.err=NA
+#           my.z.val=NA
+#           my.f.val=my.III.summary$`F value`[this.shift.temp]
+#           my.p.val=my.III.summary$`Pr(>F)`[this.shift.temp]
+#           my.tables.df[this.temp.var,]=c(my.factor[yet.another.var],my.sumsq,my.df,my.std.err,my.z.val,my.f.val,my.p.val)
+#         }else if(type=="glm"){
+#           my.or=NA
+#           my.est=NA
+#           my.std.err=NA
+#           my.dev=my.III.summary$`LR Chisq`[ord.temp]
+#           my.df=my.III.summary$Df[ord.temp]
+#           my.p.val=my.III.summary$`Pr(>Chisq)`[ord.temp]
+#           my.tables.df[this.temp.var,]=c(my.factor[yet.another.var],my.or,my.est,my.std.err,my.dev,my.df,my.p.val)
+#           ord.temp=ord.temp+1
+#         }else{
+#           my.or=NA
+#           my.est=NA
+#           my.std.err=NA
+#           my.dev=my.III.summary$Chisq[ord.temp]
+#           my.df=my.III.summary$Df[ord.temp]
+#           my.p.val=my.III.summary$`Pr(>Chisq)`[ord.temp]
+#           my.tables.df[this.temp.var,]=c(my.factor[yet.another.var],my.or,my.est,my.std.err,my.dev,my.df,my.p.val)
+#           ord.temp=ord.temp+1
+#
+#         }
+#         yet.another.var=yet.another.var+1
+#         this.temp.var=this.temp.var+1
+#         this.shift.temp=this.shift.temp+1
+#         other.other.temp=2
+#
+#
+#         if(length(grepl(":",my.summary$coefficients[other.temp,1]))>0){
+#
+#           while(other.other.temp<{num.of.levels[my.factor.var]+1}){
+#             if(type=="lm"){
+#               my.sumsq=NA
+#               my.df=NA
+#               my.est=my.estimate[other.temp]
+#               my.std.err=my.std.error[other.temp]
+#               #### NEED TO FIX ####
+#               my.f.val={my.summary$coefficients[other.temp,3]^2}
+#               my.p.val=my.summary$coefficients[other.temp,4]
+#               my.tables.df[this.temp.var,]=c(my.rownames[other.temp],my.sumsq,my.df,my.est,my.std.err,my.f.val,my.p.val)
+#             }else if(type=="glm"){
+#               my.or=exp(my.estimate[other.temp])
+#               my.est=my.estimate[other.temp]
+#               my.std.err=my.std.error[other.temp]
+#               my.z.val=my.summary$coefficients[other.temp,3]
+#               my.dev=my.III.summary$`LR Chisq`[other.temp]
+#               my.df=my.III.summary$Df[other.temp]
+#               my.p.val=my.summary$coefficients[other.temp,4]
+#               my.tables.df[this.temp.var,]=c(my.rownames[other.temp],my.or,my.std.err,my.z.val,NA,NA,my.p.val)
+#               this.shift.temp=this.shift.temp+1
+#             }else{
+#               my.or=exp(my.estimate[other.temp+total.intercepts-1])
+#               my.est=my.estimate[other.temp+total.intercepts-1]
+#               my.std.err=my.std.error[other.temp+total.intercepts-1]
+#               my.z.val=my.summary$coefficients[{other.temp+total.intercepts-1},3]
+#               #my.dev=my.III.summary$Chisq[other.temp]
+#               #my.df=my.III.summary$Df[other.temp]
+#               my.p.val=my.summary$coefficients[{other.temp+total.intercepts-1},4]
+#               my.tables.df[this.temp.var,]=c(my.rownames[other.temp+total.intercepts-1],my.or,my.std.err,my.z.val,NA,NA,my.p.val)
+#               this.shift.temp=this.shift.temp+1
+#             }
+#             this.temp.var=this.temp.var+1
+#             other.temp=other.temp+1
+#             other.other.temp=other.other.temp+1
+#             the.length=the.length+1
+#
+#           }
+#
+#         }else{
+#
+#         }
+#
+#         if(my.factor.var==1){
+#
+#           my.shift={my.shift+other.temp-2}
+#
+#         }else{
+#
+#           my.shift=my.shift+other.temp
+#
+#         }
+#
+#         my.factor.var=my.factor.var+1
+#
+#       }else{
+#         if(type=="lm"){
+#           my.sumsq=my.III.summary$`Sum Sq`[this.shift.temp]
+#           my.df=my.III.summary$Df[this.shift.temp]
+#           my.est=my.estimate[this.shift.temp]
+#           my.std.err=my.std.error[this.shift.temp]
+#           my.f.val=my.III.summary$`F value`[this.shift.temp]
+#           my.p.val=my.III.summary$`Pr(>F)`[this.shift.temp]
+#           my.tables.df[this.temp.var,]=c(rownames(my.III.summary)[this.shift.temp],my.sumsq,my.df,my.est,my.std.err,my.f.val,my.p.val)
+#         }else if(type=="glm"){
+#           if(!is.null(my.factor)){
+#             this.shift.temp=this.shift.temp-ordinal.temp
+#           }
+#           my.or=exp(my.estimate[this.shift.temp])
+#           my.est=my.estimate[this.shift.temp]
+#           my.std.err=my.std.error[this.shift.temp]
+#           my.z.val=my.summary$coefficients[other.temp,3]
+#           my.dev=my.III.summary$`LR Chisq`[ord.temp]
+#           my.df=my.III.summary$Df[ord.temp]
+#           my.p.val=my.III.summary$`Pr(>Chisq)`[ord.temp]
+#           my.tables.df[this.temp.var,]=c(my.rownames[this.shift.temp],my.or,my.std.err,NA,my.dev,my.df,my.p.val)
+#           if(!is.null(my.factor)){
+#             this.shift.temp=this.shift.temp+ordinal.temp
+#           }
+#           ord.temp=ord.temp+1
+#         }else{
+#           if(!is.null(my.factor)){
+#             this.shift.temp=this.shift.temp-ordinal.temp
+#           }
+#           my.or=exp(my.estimate[this.shift.temp])
+#           my.est=my.estimate[this.shift.temp]
+#           my.std.err=my.std.error[this.shift.temp]
+#           my.z.val=my.summary$coefficients[this.shift.temp,3]
+#           my.dev=my.III.summary$Chisq[ord.temp]
+#           my.df=my.III.summary$Df[ord.temp]
+#           my.p.val=my.III.summary$`Pr(>Chisq)`[ord.temp]
+#           my.tables.df[this.temp.var,]=c(my.rownames[this.shift.temp],my.or,my.std.err,NA,my.dev,my.df,my.p.val)
+#           if(!is.null(my.factor)){
+#             this.shift.temp=this.shift.temp+ordinal.temp
+#           }
+#           ord.temp=ord.temp+1
+#         }
+#         this.shift.temp=this.shift.temp+1
+#         this.temp.var=this.temp.var+1
+#
+#       }
+#     }
+#
+#     if(type=="lm"){
+#       my.tables.df[this.temp.var,]=c("Residuals",my.III.summary$`Sum Sq`[this.shift.temp],my.III.summary$Df[this.shift.temp],NA,NA,NA,NA)
+#       my.tables.df[this.temp.var+1,]=c("Total",my.total,my.df.total,NA,NA,NA,NA)
+#       my.tables.df$f.val=as.numeric(my.tables.df$f.val)
+#       my.tables.df$est=as.numeric(my.tables.df$est)
+#       my.tables.df$sumsq=as.numeric(my.tables.df$sumsq)
+#     }else{
+#       my.tables.df[this.temp.var,]=c("Change from Null",NA,NA,NA,ddeviance2,ddf2,fit2)
+#       my.tables.df$od.rat=as.numeric(my.tables.df$od.rat)
+#       my.tables.df$z.val=as.numeric(my.tables.df$z.val)
+#       my.tables.df$dev=as.numeric(my.tables.df$dev)
+#     }
+#
+#     my.tables.df$df=as.numeric(my.tables.df$df)
+#     my.tables.df$std.err=as.numeric(my.tables.df$std.err)
+#     my.tables.df$p.val=as.numeric(my.tables.df$p.val)
+#
+#     #### Make custom glance stats ####
+#
+#     #### Can eventually make it options
+#     if(type=="lm"){
+#       glance_stats=broom::glance(my.model)
+#       glance_stats=tidyr::gather(glance_stats)
+#
+#
+#       glance_stats[3:5]=NA
+#       glance_stats[6]=c(glance_stats$key[7:8],NA,glance_stats$key[9:11],NA,NA,NA,NA,NA)
+#       glance_stats[7]=c(glance_stats$value[7:8],NA,glance_stats$value[9:11],NA,NA,NA,NA,NA)
+#       glance_stats=glance_stats[-7:-11,]
+#       glance_stats=glance_stats[-3,]
+#       glance_stats=glance_stats[-5,]
+#     }else{
+#       # glance_stats2=as.data.frame(matrix(ncol=7,nrow=1))
+#       # glance_stats2[1,]=c(glance_stats$key[1],glance_stats$value[1],NA,NA,NA,glance_stats$key[6],glance_stats$value[6])
+#       # glance_stats2[2,]=c(glance_stats$key[2],glance_stats$value[2],NA,NA,NA,glance_stats$key[7],glance_stats$value[7])
+#       # glance_stats2[3,]=c(glance_stats$key[3],glance_stats$value[3],NA,NA,NA,glance_stats$key[4],glance_stats$value[4])
+#       # glance_stats=glance_stats2
+#     }
+#     #### For total
+#     the.length=the.length+1
+#     this.temp.var=this.temp.var+1
+#     #### Make table ####
+#
+#     options(pixie_interactive = pix.int,pixie_na_string="")
+#
+#
+#     if(type=="lm"){
+#       my.dust=pixiedust::dust(my.tables.df)%>%
+#         sprinkle(cols="p.val",fn=quote(pvalString(value,digits=3,format="default")))%>%
+#         sprinkle_print_method(pix.method)%>%
+#         sprinkle_na_string()%>%
+#         sprinkle(cols=c(2,3,4,5,6,7),pad=5)%>%
+#         sprinkle(rows=1:the.length,cols=1:7,
+#                  border="right",border_color="black")%>%
+#         sprinkle(rows=1:the.length,cols=1,
+#                  border="left",border_color="black")%>%
+#         sprinkle(rows=1,cols=1:7,
+#                  border=c("top","bottom","left","right"),border_color="black",part="head")%>%
+#         sprinkle(rows=this.temp.var,cols=1:7,
+#                  border="bottom",border_color="black")%>%
+#         sprinkle(cols=c("sumsq","est","std.err","f.val"),round=2)%>%
+#         sprinkle_colnames("Variable","Sums of Squares","df","Estimate","Std. Error","F-value","Pr(>F)")
+#
+#     }else if(type=="glm"){
+#       my.dust=pixiedust::dust(my.tables.df)%>%
+#         sprinkle(cols="p.val",fn=quote(pvalString(value,digits=3,format="default")))%>%
+#         sprinkle_print_method(pix.method)%>%
+#         sprinkle_na_string()%>%
+#         sprinkle(cols=2:5,round=2)%>%
+#         sprinkle(cols=c(2,3,4,5,6,7),pad=5)%>%
+#         sprinkle(cols=2:7,pad=5,part="head")%>%
+#         sprinkle(rows={this.temp.var-2},cols=1:7,border="bottom",border_color="black")%>%
+#         sprinkle(rows=1:the.length,cols=1:7,
+#                  border="right",border_color="black")%>%
+#         sprinkle(rows=1:the.length,cols=1,
+#                  border="left",border_color="black")%>%
+#         sprinkle(rows=1,cols=1:7,
+#                  border=c("top","bottom","left","right"),border_color="black",part="head")%>%
+#         sprinkle(rows=this.temp.var-1,cols=1:7,
+#                  border="bottom",border_color="black")%>%
+#         sprinkle_colnames("Variable","Odds Ratio","Std. Error","z-Value","Deviance","df","p-Value")
+#
+#     }else{
+#       my.dust=pixiedust::dust(my.tables.df)%>%
+#         sprinkle(cols="p.val",fn=quote(pvalString(value,digits=3,format="default")))%>%
+#         sprinkle_print_method(pix.method)%>%
+#         sprinkle_na_string()%>%
+#         sprinkle(cols=2:5,round=2)%>%
+#         sprinkle(cols=c(2,3,4,5,6,7),pad=5)%>%
+#         sprinkle(cols=2:7,pad=5,part="head")%>%
+#         sprinkle(rows=total.intercepts,cols=1:7,border="bottom",border_color="black")%>%
+#         sprinkle(rows={this.temp.var-2},cols=1:7,border="bottom",border_color="black")%>%
+#         sprinkle(rows=1:{the.length+total.intercepts},cols=1:7,
+#                  border="right",border_color="black")%>%
+#         sprinkle(rows=1:{the.length+total.intercepts},cols=1,
+#                  border="left",border_color="black")%>%
+#         sprinkle(rows=1,cols=1:7,
+#                  border=c("top","bottom","left","right"),border_color="black",part="head")%>%
+#         sprinkle(rows=this.temp.var-1,cols=1:7,
+#                  border="bottom",border_color="black")%>%
+#         sprinkle_colnames("Variable","Odds Ratio","Std. Error","z-Value","Deviance","df","p-Value")
+#     }
+#
+#     if(type=="lm"){
+#       my.dust=pixiedust::redust(my.dust,glance_stats,part="foot")%>%
+#         sprinkle(cols=c(2,7),round=3,part="foot")%>%
+#         sprinkle(cols=3:5,replace=c("","","","","","","","","","","",""),part="foot")%>%
+#         sprinkle(cols=1, replace=c("R-Square","Adj R-Sq","F-Statistic","P-Value"),part="foot")%>%
+#         sprinkle(cols=2,rows=4,fn=quote(pvalString(value,digits=3,format="default")),part="foot")%>%
+#         sprinkle(cols=1:7,rows=1,halign="center",part="head")%>%
+#         sprinkle_width(cols=1,width=90,width_units="pt")%>%
+#         sprinkle_width(cols=2,width=108,width_units="pt")%>%
+#         sprinkle_width(cols=4,width=62,width_units="pt")%>%
+#         sprinkle_width(cols=5,width=68,width_units="pt")%>%
+#         sprinkle_width(cols=6,width=68,width_units="pt")%>%
+#         sprinkle_width(cols=7,width=71,width_units="pt")%>%
+#         sprinkle(cols=2,halign="left",part="foot")
+#     }else{
+#       # my.dust=pixiedust::redust(my.dust,glance_stats,part="foot")%>%
+#       #   sprinkle(cols=c(2,7),round=2,part="foot")%>%
+#       #   sprinkle(cols=3:5,replace=c("","","","","","","","",""),part="foot")
+#     }
+#     if(pix.int){
+#       return(my.dust)
+#     }else{
+#       my.dust.print=print(my.dust,quote=F)[1]
+#       return(my.dust.print)
+#     }
+#
+#   }
+# }
 quick.reg.table.default = function(my.model,
                               part.eta = F,
                               VIF = F,
@@ -1695,10 +2195,33 @@ quick.reg.table.default = function(my.model,
                               adjustment = "bonferroni",
                               show.contrasts=F,
                               show.intercepts=F,
-                              do.return=T) {
+                              do.return=F) {
+
+  #### Find type ####
+  #my.reg.type=quick.type(my.model)
+  my.reg.type=class(my.model)[1]
+  if(type=="clm"){
+    type="ord"
+  }
+
+
+  #### Set Inits ####
+  if(type=="ord"){
+    ab.len=30
+    library(ordinal)
+  }else{
+    ab.len=15
+  }
+  #### Get data frame from parent environment ####
+  my.found.df = eval(parse(text=capture.output(my.model$call$data)),envir = .GlobalEnv)
+  #print(dim(my.found.df))
+  if (is.null(my.found.df)) {
+    stop(paste("No data frame found"))
+  }
 
   SS.type = 2
 
+  my.new.df=my.model$model
   if (type == "lm") {
     #### ANOVA TABLES ####
     my.summary = summary(my.model)
@@ -1717,16 +2240,19 @@ quick.reg.table.default = function(my.model,
       }
     }
 
+
     #### Calculate total SS ####
-    my.total = sum(my.III.summary$`Sum Sq`[ifelse(marginality,2,1):length(my.III.summary$`Sum Sq`)])
-    my.df.total = sum(my.III.summary$Df[ifelse(marginality,2,1):length(my.III.summary$Df)])
+    my.total = sum(my.III.summary$`Sum Sq`[ifelse(marginality,1,2):length(my.III.summary$`Sum Sq`)])
+    my.df.total = sum(my.III.summary$Df[ifelse(marginality,1,2):length(my.III.summary$Df)])
     total.intercepts = 1
     my.rownames = c(abbreviate(rownames(my.summary$coefficients), minlength = abbrev.length),
                     "Residuals",
                     "Total")
 
-    treat.SS=sum(my.III.summary$`Sum Sq`[ifelse(marginality,2,1):{length(my.III.summary$`Sum Sq`)-1}])
-    treat.df=sum(my.III.summary$Df[ifelse(marginality,2,1):{length(my.III.summary$Df)-1}])
+    treat.SS=sum(my.III.summary$`Sum Sq`[ifelse(marginality,1,2):{length(my.III.summary$`Sum Sq`)-1}])
+    treat.df=sum(my.III.summary$Df[ifelse(marginality,1,2):{length(my.III.summary$Df)-1}])
+    my.total.change=treat.SS+ifelse(marginality,0,my.III.summary$`Sum Sq`[1])
+    my.df.total.change=treat.df+ifelse(marginality,0,1)
 
   }else if (type == "glm") {
 
@@ -1774,10 +2300,14 @@ quick.reg.table.default = function(my.model,
     my.null.model.z=summary(null.model)$coefficients[1:total.intercepts,3]^2
     my.full.dev=sum(my.full.model.z)
     my.null.dev=sum(my.null.model.z)
+
+    treat.dev=anova(null.model,new.model)$`Deviance`[2]
+
+
     my.int.dev.total=abs(total.intercepts*{my.full.dev-my.null.dev})
     my.int.dev=summary(new.model)$coefficients[1:total.intercepts,2]^2
 
-    treat.dev=anova(null.model,new.model)$`Deviance`[2]
+
 
     #vars.dev.df=drop1(new.model,test="Chi")$Df[-1]
     #vars.dev.p=drop1(new.model,test="Chi")$`Pr(>Chi)`[-1]
@@ -1787,10 +2317,10 @@ quick.reg.table.default = function(my.model,
 
 
     total.dev=new.model$null.deviance
-    resid.dev=total.dev-total.dev.change
+    #resid.dev=total.dev-total.dev.change
 
     vars.dev.df=anova(new.model,test="Chi")$Df
-    resid.df=new.model$df.residual
+    #resid.df=new.model$df.residual
     total.df=resid.df+vars.df
 
 
@@ -1904,7 +2434,7 @@ quick.reg.table.default = function(my.model,
 
 
     total.df=dim(myDF)[1]
-    resid.df=total.df-total.dev.change.df
+    resid.df=my.model$df.residual
 
     vars.or=exp(coef(new.model))[{null.model$edf+1}:length(coef(new.model))]
     vars.or.confint=exp(confint(new.model,type="Wald"))[{null.model$edf+1}:length(coef(new.model)),]
@@ -2136,22 +2666,42 @@ quick.reg.table.default = function(my.model,
       }
       while (i <= total.intercepts) {
         if (type == "lm") {
-          my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp]
-          my.df = my.III.summary$Df[this.shift.temp]
-          my.est = my.estimate[this.shift.temp]
-          my.std.err = my.std.error[this.shift.temp]
-          my.f.val = my.III.summary$`F value`[this.shift.temp]
-          my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
-          my.tables.df[this.temp.var, ] = c(
-            my.rownames[this.shift.temp],
-            summary(my.model)[[4]][this.shift.temp,1],
-            summary(my.model)[[4]][this.shift.temp,2],
-            my.sumsq,
-            my.df,
-            my.f.val,
-            my.p.val,
-            rep(NA, v.p.rep)
-          )
+          if(marginality){
+            # my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp]
+            # my.df = my.III.summary$Df[this.shift.temp]
+            # my.est = my.estimate[this.shift.temp]
+            # my.std.err = my.std.error[this.shift.temp]
+            # my.f.val = my.III.summary$`F value`[this.shift.temp]
+            # my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
+            my.tables.df[this.temp.var, ] = c(
+              "Intercept",
+              NA,
+              NA,
+              0,
+              1,
+              NA,
+              NA,
+              rep(NA, v.p.rep)
+            )
+          }else{
+            my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp]
+            my.df = my.III.summary$Df[this.shift.temp]
+            my.est = my.estimate[this.shift.temp]
+            my.std.err = my.std.error[this.shift.temp]
+            my.f.val = my.III.summary$`F value`[this.shift.temp]
+            my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
+            my.tables.df[this.temp.var, ] = c(
+              my.rownames[this.shift.temp],
+              summary(my.model)[[4]][this.shift.temp,1],
+              summary(my.model)[[4]][this.shift.temp,2],
+              my.sumsq,
+              my.df,
+              my.f.val,
+              my.p.val,
+              rep(NA, v.p.rep)
+            )
+          }
+
         } else if(type=="glm"){
           #### HERE IS WHERE I LEFT OFF!! ####
           # my.or = exp(my.estimate[this.shift.temp])
@@ -2192,7 +2742,6 @@ quick.reg.table.default = function(my.model,
 
         }
         this.shift.temp = this.shift.temp + 1
-
         this.temp.var = this.temp.var + 1
         i = i + 1
 
@@ -2201,18 +2750,18 @@ quick.reg.table.default = function(my.model,
         my.tables.df[this.temp.var,]=c("Treatment Change",NA,NA,NA,treat.dev,vars.df,pchisq(treat.dev,vars.df,lower.tail = F))
         this.temp.var=this.temp.var+1
       }else{
-        my.tables.df[this.temp.var,]=c("Treatment",NA,NA,treat.SS,treat.df,glance(my.model)[4],glance(my.model)[5],rep(NA,v.p.rep))
+        my.tables.df[this.temp.var,]=c("Treatment Change",NA,NA,treat.SS,treat.df,glance(my.model)[4],glance(my.model)[5],rep(NA,v.p.rep))
         this.temp.var=this.temp.var+1
       }
-    } else if (this.shift.temp == my.factor.rownames) {
+    } else if (ifelse(type=="lm",this.shift.temp-1,this.shift.temp) == my.factor.rownames) {
       if (type == "lm") {
-        my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp]
-        my.df = my.III.summary$Df[this.shift.temp]
+        my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp-1]
+        my.df = my.III.summary$Df[this.shift.temp-1]
         my.est = my.estimate[this.shift.temp]
         my.std.err = my.std.error[this.shift.temp]
         my.z.val = NA
-        my.f.val = my.III.summary$`F value`[this.shift.temp]
-        my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
+        my.f.val = my.III.summary$`F value`[this.shift.temp-1]
+        my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp-1]
         if(!VIF & !part.eta){
           my.tables.df[this.temp.var, ] = c(
             my.factor[yet.another.var],
@@ -2436,17 +2985,17 @@ quick.reg.table.default = function(my.model,
 
     } else{
       if (type == "lm") {
-        my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp+ord.temp-1]
-        my.df = my.III.summary$Df[this.shift.temp+ord.temp-1]
-        my.est = my.estimate[this.shift.temp+ord.temp-1]
-        my.std.err = my.std.error[this.shift.temp+ord.temp-1]
-        my.f.val = my.III.summary$`F value`[this.shift.temp+ord.temp-1]
-        my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp+ord.temp-1]
+        my.sumsq = my.III.summary$`Sum Sq`[ifelse(marginality,this.shift.temp-1,this.shift.temp)]
+        my.df = my.III.summary$Df[ifelse(marginality,this.shift.temp-1,this.shift.temp)]
+        my.est = my.estimate[ifelse(SS.type==3,this.shift.temp-1,{this.shift.temp+sum(num.of.levels[1:{my.factor.var-1}])-my.factor.var})]
+        my.std.err = my.std.error[ifelse(SS.type==3,this.shift.temp-1,{this.shift.temp+sum(num.of.levels[1:{my.factor.var-1}])-my.factor.var})]
+        my.f.val = my.III.summary$`F value`[ifelse(marginality,this.shift.temp-1,this.shift.temp)]
+        my.p.val = my.III.summary$`Pr(>F)`[ifelse(marginality,this.shift.temp-1,this.shift.temp)]
         if (!VIF & !part.eta) {
           my.tables.df[this.temp.var, ] = c(
-            rownames(my.III.summary)[this.shift.temp+ord.temp-1],
-            summary(my.model)[[4]][this.shift.temp+ord.temp-1,1],
-            summary(my.model)[[4]][this.shift.temp+ord.temp-1,2],
+            rownames(my.III.summary)[this.shift.temp-1],
+            my.est,
+            my.std.err,
             my.sumsq,
             my.df,
             my.f.val,
@@ -2455,8 +3004,8 @@ quick.reg.table.default = function(my.model,
         } else if (!part.eta) {
           my.tables.df[this.temp.var, ] = c(
             rownames(my.III.summary)[this.shift.temp+ord.temp-1],
-            summary(my.model)[[4]][this.shift.temp+ord.temp-1,1],
-            summary(my.model)[[4]][this.shift.temp+ord.temp-1,2],
+            my.est,
+            my.std.err,
             my.sumsq,
             my.df,
             my.f.val,
@@ -2467,8 +3016,8 @@ quick.reg.table.default = function(my.model,
           my.p.eta = my.sumsq / my.total
           my.tables.df[this.temp.var, ] = c(
             rownames(my.III.summary)[this.shift.temp+ord.temp-1],
-            summary(my.model)[[4]][this.shift.temp+ord.temp-1,1],
-            summary(my.model)[[4]][this.shift.temp+ord.temp-1,2],
+            my.est,
+            my.std.err,
             my.sumsq,
             my.df,
             my.f.val,
@@ -2479,8 +3028,8 @@ quick.reg.table.default = function(my.model,
           my.p.eta = my.sumsq / my.total
           my.tables.df[this.temp.var, ] = c(
             rownames(my.III.summary)[this.shift.temp],
-            summary(my.model)[[4]][this.shift.temp+ord.temp-1,1],
-            summary(my.model)[[4]][this.shift.temp+ord.temp-1,2],
+            my.est,
+            my.std.err,
             my.sumsq,
             my.df,
             my.f.val,
@@ -2567,23 +3116,24 @@ quick.reg.table.default = function(my.model,
   }
 
   if (type == "lm") {
-    my.tables.df[this.temp.var, ] = c(
+    my.tables.df[this.temp.var, ] = c("Total Change",
+                                          NA,
+                                          NA,
+                                          my.total.change,
+                                          my.df.total.change,
+                                          rep(NA, v.p.rep + 2))
+    my.tables.df[this.temp.var+1, ] = c(
       "Residuals",
       NA,
       NA,
-      my.III.summary$`Sum Sq`[this.shift.temp],
-      my.III.summary$Df[this.shift.temp],
+      my.III.summary$`Sum Sq`[ifelse(marginality,this.shift.temp-1,this.shift.temp)],
+      my.III.summary$Df[ifelse(marginality,this.shift.temp-1,this.shift.temp)],
       NA,
       NA,
       rep(NA, v.p.rep)
     )
-    my.tables.df[this.temp.var + 1, ] = c("Total Change",
-                                          NA,
-                                          NA,
-                                          my.total,
-                                          my.df.total,
-                                          rep(NA, v.p.rep + 2))
-    my.tables.df[this.temp.var+2,]=c("Total SS",NA,NA,my.total+my.III.summary$`Sum Sq`[1],my.df.total+1,rep(NA,v.p.rep+2))
+
+    my.tables.df[this.temp.var+2,]=c("Total",NA,NA,my.total,my.df.total,rep(NA,v.p.rep+2))
     if (!VIF & !part.eta) {
 
     } else if (!VIF) {
@@ -2619,7 +3169,31 @@ quick.reg.table.default = function(my.model,
   }
 
 
-
+  if(type=="lm"){
+    if(show.footer){
+      the.footer=paste(ifelse(dim(my.new.df)[1]==dim(myDF)[1],"Data have same number of rows <br />",paste({dim(myDF)[1]-dim(my.new.df)[1]}," cases deleted due to missingness <br />")),"Method: QR decomposition",if(show.contrasts){paste(" <br />Adjustment: ", adjustment,sep="")})
+    }else{
+      the.footer=NULL
+    }
+    my.html.table=quick.table(my.tables.df,"lm",marginality=marginality, abbrev.length = abbrev.length,the.footer = the.footer)
+    if(do.return){
+      return(my.html.table)
+    }else{
+      return()
+    }
+  }else if(type=="glm" | type=="ord"){
+    if(show.footer){
+      the.footer=paste(ifelse(dim(my.new.df)[1]==dim(myDF)[1],"Data have same number of rows <br />",paste({dim(myDF)[1]-dim(my.new.df)[1]}," cases deleted due to missingness <br />")),"Family: ",ifelse(type=="glm",new.model$family$family,"Ordinal")," <br /> Link: ",ifelse(type=="glm",new.model$family$link,levels(my.model$info$link)),if(show.contrasts){paste(" <br />Adjustment: ",adjustment,sep="")})
+    }else{
+      the.footer=NULL
+    }
+    my.html.table=quick.table(my.tables.df,"glm",marginality=marginality, abbrev.length = abbrev.length,the.footer = the.footer)
+    if(do.return){
+      return(my.html.table)
+    }else{
+      return()
+    }
+  }
   #### Make custom glance stats ####
   if(do.glance){
     #### Can eventually make it options

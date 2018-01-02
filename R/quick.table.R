@@ -17,7 +17,7 @@ quick.table=function(my.table,
                      the.caption=NA,
                      the.footer=NA,
                      abbrev.length=ab.len,
-                     SS.type=2,
+                     marginality=T,
                      new.rownames.int=NULL,
                      new.rownames.treat=NULL,
                      swap.na=NULL,
@@ -29,6 +29,8 @@ quick.table=function(my.table,
                      make.black=NULL){
 
   #### Inits ####
+  library(purrr)
+  SS.type=2
 
   if(type=="ord"){
     ab.len=30
@@ -45,7 +47,7 @@ quick.table=function(my.table,
   attr(my.table,"quick.round")=round.num
   attr(my.table,"quick.type")=type
   attr(my.table,"quick.footer")=the.footer
-  attr(my.table,"quick.SS.type")=SS.type
+  attr(my.table,"quick.marginality")=marginality
   attr(my.table,"class")=c(attr(my.table,"class"),"quick.table")
 
 
@@ -55,6 +57,16 @@ quick.table=function(my.table,
     my.colnames=c("Variable",paste(test.stat,"<br />Statistic"),"F-Value",
                   paste("Type ",ifelse(SS.type==2,"II","III"),"<br />Sums of<br />Squares"),
                   "dF","Mult<br />dF","Resid<br />dF","Pr(>F)")
+  }else if(type=="lm"){
+    round.rows=c(2,3,4,6)
+    p.val.row=7
+    my.colnames=c("Variable","Estimate","Standard <br />Error",
+                  paste("Type ",ifelse(SS.type==2,"II","III"),"<br />Sums of<br />Squares"),
+                  "dF","F-Value","Pr(>F)")
+  }else if(type=="glm"){
+    round.rows=c(2,3,4,5)
+    p.val.row=7
+    my.colnames=c("Variable","Odds <br /> Ratio","2.5%","97.5%","Deviance","df","Pr(><span style=\"font-size:125%;\">&chi;</span><sup>2</sup>)")
   }
   attr(my.table,"quick.col.names")=col.names
 
@@ -92,8 +104,10 @@ quick.table=function(my.table,
   attr(my.table,"quick.full.start")=paste("<html><head><style>table{border: 1px solid black;border-collapse: collapse;}",
                                           "th{padding: 15px;}td {padding: 5px;}#red {border: 2px solid red;}",
                                           "#black {border: 2px solid black;}#change {border-top: 1px solid black;text-align: left;}",
-                                          "tr:hover {background-color: #f5f5f5;}#int {border-top: 1px solid black;}#col {border-bottom: 1px solid black;}</style></head>",sep="")
-  attr(my.table,"quick.part.start")=paste("<div style=\"overflow-x:auto;\"><table style=\"width:100%\">")
+                                          "tr:hover {background-color: #f5f5f5;}#int {border-top: 1px solid black;}#col {border-bottom: 1px solid black;padding:1px;}",
+                                          "#Confint {border-bottom: 1px solid black;padding: 0px;}</style>",
+                                          "<script>$(\"#quick.table\").delegate(\"tr\",\"click\",function(e){e.setAttribute(\"class\",\"red\");}</script></head>",sep="")
+  attr(my.table,"quick.part.start")=paste("<div style=\"overflow-x:auto;\"><table style=\"width:100%\",id=\"quick.table\",>")
   attr(my.table,"quick.caption")=ifelse(is.null(the.caption),NA,paste("<caption>",the.caption,"</caption>"))
   attr(my.table,"quick.part.end")=paste("</table></div>")
   attr(my.table,"quick.full.end")=paste("</body></html>")
@@ -111,14 +125,32 @@ quick.table=function(my.table,
   }
 
   #### Put in Column Headings
-  if(type!="glm"){
-    col.headings="<tr id=\"col\", align=\"center\">"
-    for(i in 1:length(my.colnames)){
-      col.headings=paste(col.headings,"<th>",my.colnames[i],"</th>")
+  if(type!="ord"){
+    if(type=="glm"){
+      #col.headings=paste("<tr align=\"center\"><th>&nbsp;</th><th>&nbsp;</th><th id=\"Confint\", colspan=2>Confidence Interval</th><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th></tr>")
+      col.headings=paste("<tr id=\"col\", align=\"center\">")
+      for(i in 1:length(my.colnames)){
+        if(i!=3 & i!=4){
+        col.headings=paste(col.headings,"<th>",my.colnames[i],"</th>")
+        }else{
+          if(i==3){
+          col.headings=paste(col.headings,"<th colspan=2><div align=\"center\"><span style=\"float:left\" id=\"Confint\">Confidence Interval</span></div><br /><p align=\"center\"><span style=\"float:left\">",my.colnames[i],"</span>",my.colnames[i+1],"</p></th>")
+          }
+        }
+      }
+      # col.headings=paste(col.headings,"</tr>")
+    }else{
+      col.headings="<tr id=\"col\", align=\"center\">"
+      for(i in 1:length(my.colnames)){
+        col.headings=paste(col.headings,"<th>",my.colnames[i],"</th>")
+      }
     }
+
+
+
     col.headings=paste(col.headings,"</tr>")
   }else{
-    stop("Sorry, not to GLM yet.")
+    stop("Sorry, not to Ordinal yet.")
   }
   my.html.table=paste(my.html.table,col.headings)
 
@@ -131,12 +163,12 @@ quick.table=function(my.table,
       #### Make th, add id="change"
       if(i %in% make.red | i %in% make.black){
         if(i %in% make.red){
-          my.line=paste("<tr id=\"red\"><th>",my.table2[i,1],"</th>")
+          my.line=paste("<tr id=\"red\"><td><b>",my.table2[i,1],"</b></td>")
         }else{
-          my.line=paste("<tr id=\"black\"><th>",my.table2[i,1],"</th>")
+          my.line=paste("<tr id=\"black\"><td><b>",my.table2[i,1],"</b></td>")
         }
       }else{
-      my.line=paste("<tr id=\"int\"><th>",my.table2[i,1],"</th>")
+      my.line=paste("<tr id=\"int\"><td><b>",my.table2[i,1],"</b></td>")
       }
     }else if(i==treat.loc | i==total.loc){
       if(i %in% make.red | i %in% make.black){
@@ -257,11 +289,20 @@ quick.table.check=function(q.tab){
 
   #### Get round number and round table
   round.num=attr(q.tab,"quick.round")
-  if(attr(q.tab,"quick.type")=="manova" | attr(q.tab,"quick.type")=="stats:manova"){
-    q.tab[[2]]=round(as.numeric(q.tab[[2]]),digits=round.num)
-    q.tab[[3]]=round(as.numeric(q.tab[[3]]),digits=round.num)
-    q.tab[[4]]=round(as.numeric(q.tab[[4]]),digits=round.num)
+  if(type=="manova" | type=="stats::manova"){
+    round.rows=c(2,3,4)
+    p.val.row=8
+  }else if(type=="lm"){
+    round.rows=c(2,3,4,6)
+    p.val.row=7
+  }else if(type=="glm"){
+    round.rows=c(2,3,4,5)
+    p.val.row=7
   }
+  for(q in 1:length(round.rows)){
+    q.tab[[round.rows[q]]]=round(as.numeric(q.tab[[round.rows[q]]]),digits=round.num)
+  }
+
 
   #### P-val
   p.row=grep("p.val",colnames(q.tab))
@@ -302,16 +343,22 @@ quick.table.update=function(q.tab,make.red=NULL,make.black=NULL,the.caption=my.c
     my.round=attr(q.tab,"quick.round")
     my.type=attr(q.tab,"quick.type")
     my.ab.len=attr(q.tab,"abbrev.length")
-    my.SS.type=attr(q.tab,"quick.SS.type")
+    my.marginality=attr(q.tab,"quick.marginality")
+    my.footer=attr(q.tab,"quick.footer")
     if(my.type=="manova" | my.type=="stats::manova"){
     my.test.stat=attr(q.tab,"quick.test.stat")
     }else{
       my.test.stat=NULL
     }
+    if(!is.null(new.rownames.treat)){
+
+    }else{
+      my.colnames=attr(q.tab,"quick.col.names")
+    }
     new.q.tab=quick.table(q.tab,type,test.stat=my.test.stat,print.type=print.type,
-               the.caption=the.caption,the.footer=the.footer,
+               the.caption=the.caption,the.footer=my.footer,
                abbrev.length=my.ab.len,
-               SS.type=my.SS.type,
+               marginality=my.marginality,
                new.rownames.int=new.rownames.int,
                new.rownames.treat=new.rownames.treat,
                swap.na=swap.na,
