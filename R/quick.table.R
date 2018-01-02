@@ -100,6 +100,7 @@ quick.table=function(my.table,
   my.table2=replace(my.table2,is.na(my.table2),"&nbsp;")
 
   #### Add style and basic tag structure####
+  capt.test="<caption> NA </caption>"
   attr(my.table,"quick.doctype")=paste("<!DOCTYPE html --- Created with quick.tasks by Christopher Kraner>")
   attr(my.table,"quick.full.start")=paste("<html><head><style>table{border: 1px solid black;border-collapse: collapse;}",
                                           "th{padding: 15px;}td {padding: 5px;}#red {border: 2px solid red;}",
@@ -108,7 +109,7 @@ quick.table=function(my.table,
                                           "#Confint {border-bottom: 1px solid black;padding: 0px;}</style>",
                                           "<script>$(\"#quick.table\").delegate(\"tr\",\"click\",function(e){e.setAttribute(\"class\",\"red\");}</script></head>",sep="")
   attr(my.table,"quick.part.start")=paste("<div style=\"overflow-x:auto;\"><table style=\"width:100%\",id=\"quick.table\",>")
-  attr(my.table,"quick.caption")=ifelse(is.null(the.caption),NA,paste("<caption>",the.caption,"</caption>"))
+  attr(my.table,"quick.caption")=ifelse({is.null(the.caption) | is.na(the.caption)},NA,paste("<caption>",the.caption,"</caption>"))
   attr(my.table,"quick.part.end")=paste("</table></div>")
   attr(my.table,"quick.full.end")=paste("</body></html>")
 

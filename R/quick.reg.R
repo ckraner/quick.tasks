@@ -40,7 +40,7 @@ quick.reg.table = function(my.model,
                            show.latent=F,
                            show.intercepts=F,
                            real.names=T,
-                           do.return=F) {
+                           do.return=F,marginality=T) {
   library(pixiedust)
   library(broom)
   library(car)
@@ -81,7 +81,7 @@ quick.reg.table.manova = function(my.model,
 
 
   #### Find type ####
-  my.reg.type=quick.type(my.model)
+  my.reg.type="manova"
 
   #### Set Inits ####
   if(type=="ord"){
@@ -114,6 +114,7 @@ quick.reg.table.manova = function(my.model,
   #### Begin MANOVA ####
   #### Inits ####
   my.y.levels=dim(my.model$model[[1]])[2]
+  my.new.df=my.model$model
   my.envir=environment()
   SS.type = 2
   my.nested.table=quick.SSCP(my.model, myDF, marginality, show.contrasts, show.latent,my.envir)
@@ -181,8 +182,8 @@ quick.reg.table.manova = function(my.model,
   }
 
   #### Get totals ####
-  the.total=total.resid+treat.total+if(!marginality){sum(diag(treat.model[[1]][[1]][[1]]))}else{0}
-  the.total.df=total.resid.df+treat.df+my.y.levels
+  the.total=the.resid+treat.total+if(!marginality){sum(diag(treat.model[[1]][[1]][[1]]))}else{0}
+  the.total.df=the.resid.df+treat.df+my.y.levels
 
   #### Partial totals
   partial.total=part.resid.total+part.treat.total+treat.model[[1]][[1]][[1]]
@@ -206,14 +207,14 @@ quick.reg.table.manova = function(my.model,
   my.manova.table=as.data.frame(matrix(ncol=v.p.len,nrow=1))
   names(my.manova.table)=my.table.names
   my.line.var=1
-  for(i in 1:length(my.SSP.treat)){
+  for(i in 1:length(treat.model[[1]][[1]])){
     if(i==1){
       my.i=i
     }else{
       my.i=2*i-1
     }
     #### Put in basic line ####
-    my.treat.err=solve(my.SSP.err)%*%treat.model[[1]][[1]][[i]]
+    my.treat.err=solve(treat.model[[1]][[2]][[1]])%*%treat.model[[1]][[1]][[i]]
     my.test.stat=ifelse({i==1 & marginality},NA,quick.m.test(my.treat.err,test.stat))
     my.SS=ifelse({i==1 & marginality},0,sum(diag(treat.model[[1]][[1]][[i]])))
     my.df=my.y.levels*ifelse(my.i!=1,as.numeric(my.nested.table[my.i,7]),1)
@@ -234,7 +235,7 @@ quick.reg.table.manova = function(my.model,
         my.SS=as.numeric(treat.model[[1]][[1]][[i]][y,y])
         my.df=1
         my.resid.df=the.resid.df
-        my.f.val={my.SS/my.df}/{sum(diag(my.SSP.err))/my.resid.df}
+        my.f.val={my.SS/my.df}/{sum(diag(treat.model[[1]][[2]]))/my.resid.df}
         my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
         my.manova.table[my.line.var,]=c(my.name,my.test.stat,my.f.val,my.SS,my.df,NA,my.resid.df,my.p.val)
@@ -371,9 +372,9 @@ quick.reg.table.manova = function(my.model,
         #### Put in latent contrasts ####
         if(show.contrasts & !{show.contrasts & show.latent}){
           #### Check length
-          if({my.SSP.treat.df[my.i]>1}){
-            other.manova.grep=grep(paste("^",names(my.SSP.treat)[my.i],"$",sep=""),names(my.model$xlevels))
-            for(k in 1:{my.SSP.treat.df[my.i]}){
+          if({as.numeric(my.nested.table[my.i,7])>1}){
+            other.manova.grep=grep(paste("^",names(treat.model[[1]][[1]])[my.i],"$",sep=""),names(my.model$xlevels))
+            for(k in 1:{as.numeric(my.nested.table[my.i,7])}){
               my.name=my.contrasts.table[[other.manova.grep]][k,1]
               my.f.val=my.latent.contrasts.table[[other.manova.grep]][[y]][k,2]
               my.SS=my.latent.contrasts.table[[other.manova.grep]][[y]][k,3]
@@ -400,7 +401,7 @@ quick.reg.table.manova = function(my.model,
       my.df=my.y.levels*as.numeric(treat.total.df)
       #### Should really be a min statement, but for later...
       my.resid.df=my.y.levels*as.numeric(the.resid.df)
-      my.f.val={my.SS/my.df}/{as.numeric(the.resid.SS)/the.resid.df}
+      my.f.val={my.SS/my.df}/{as.numeric(the.resid)/the.resid.df}
       my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
       my.manova.table[my.line.var,]=c("Treatment Change",my.test.stat,my.f.val,my.SS,{my.df/my.y.levels},my.df,my.resid.df,my.p.val)
@@ -415,7 +416,7 @@ quick.reg.table.manova = function(my.model,
           my.df=the.resid.df
           #### Should really be a min statement, but for later...
           my.resid.df=my.y.levels*the.resid.df
-          my.f.val={my.SS/my.df}/{sum(diag(my.SSP.err))/my.resid.df}
+          my.f.val={my.SS/my.df}/{sum(diag(treat.model[[1]][[2]]))/my.resid.df}
           my.p.val=pf(my.f.val,my.df,my.resid.df,lower.tail = F)
 
           my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,{my.df/my.y.levels},NA,{my.resid.df/my.y.levels},my.p.val)
@@ -480,7 +481,7 @@ quick.reg.table.manova = function(my.model,
       my.line.var=my.line.var+1
     }
   }
-  my.manova.table[my.line.var,]=c("Total",NA,NA,the.total,the.total.change.df+1,my.y.levels*the.total.change.df+2,NA,NA,rep(NA,v.p.rep))
+  my.manova.table[my.line.var,]=c("Total",NA,NA,the.total,the.resid.df+treat.total.df,my.y.levels*{the.resid.df+treat.total.df},NA,NA,rep(NA,v.p.rep))
   if(show.footer){
     the.footer=paste(ifelse(dim(my.new.df)[1]==dim(myDF)[1],"Data have same number of rows <br />",paste({dim(myDF)[1]-dim(my.new.df)[1]}," cases deleted due to missingness <br />")),"Method: QR decomposition",if(show.contrasts){paste(" <br />Adjustment: ", adjustment,sep="")},if(show.latent){paste(" <br /> Latent Contrasts")})
   }else{
@@ -2221,6 +2222,7 @@ quick.reg.table.default = function(my.model,
 
   SS.type = 2
 
+
   my.new.df=my.model$model
   if (type == "lm") {
     #### ANOVA TABLES ####
@@ -2231,7 +2233,7 @@ quick.reg.table.default = function(my.model,
       my.III.summary = NULL
       the.length = length(my.model$y.levels) - 1
     } else{
-      my.III.summary = car::Anova(my.model, type = SS.type)
+      my.III.summary = car::Anova(my.model, type = ifelse(marginality,2,3))
 
       if (type == "glm" & is.null(my.factor)) {
         the.length = dim(my.III.summary)[1] + 1
@@ -2304,8 +2306,10 @@ quick.reg.table.default = function(my.model,
     treat.dev=anova(null.model,new.model)$`Deviance`[2]
 
 
-    my.int.dev.total=abs(total.intercepts*{my.full.dev-my.null.dev})
-    my.int.dev=summary(new.model)$coefficients[1:total.intercepts,2]^2
+    my.null.dev.total=summary(null.model)$coefficients[1]^2
+    my.full.dev.total=sum(summary(new.model)$coefficients[1:total.intercepts,3]^2)
+    my.int.dev.total=abs(my.null.dev.total-my.full.dev.total)
+    my.int.dev=summary(new.model)$coefficients[1:total.intercepts,3]^2
 
 
 
@@ -2313,7 +2317,7 @@ quick.reg.table.default = function(my.model,
     #vars.dev.p=drop1(new.model,test="Chi")$`Pr(>Chi)`[-1]
     #total.dev=-2*{as.integer(levels(null.model$info$logLik)[1])-as.integer(levels(new.model$info$logLik)[1])}
     total.dev.change=treat.dev+my.int.dev.total
-    total.dev.change.df=total.intercepts*vars.df
+    total.dev.change.df=vars.df+1
 
 
     total.dev=new.model$null.deviance
@@ -2383,8 +2387,8 @@ quick.reg.table.default = function(my.model,
     my.null.model.z=summary(null.model)$coefficients[1:total.intercepts,3]^2
     my.full.dev=sum(my.full.model.z)
     my.null.dev=sum(my.null.model.z)
-    my.int.dev.total=abs(total.intercepts*{my.full.dev-my.null.dev})
-    my.int.dev=summary(new.model)$coefficients[1:total.intercepts,2]^2
+    my.int.dev.total=abs(total.intercepts*{my.null.dev-my.full.dev})
+    my.int.dev=summary(new.model)$coefficients[1:total.intercepts,3]^2
 
     vars.df=new.model$edf-null.model$edf
 
@@ -2429,8 +2433,9 @@ quick.reg.table.default = function(my.model,
       total.dev.change.df=vars.df.total+total.intercepts
     }
 
+    total.dev=-2*null.model$logLik
     resid.dev=-2*new.model$logLik
-    total.dev=total.dev.change+resid.dev
+
 
 
     total.df=dim(myDF)[1]
@@ -2624,7 +2629,7 @@ quick.reg.table.default = function(my.model,
   ord.temp = 0
   phia.temp=1
   if (type == "lm") {
-    dang.length = length(rownames(my.III.summary))+1
+    dang.length = length(rownames(my.III.summary))+ifelse(marginality,1,0)
   } else if (type == "glm") {
     # dang.length = total.intercepts + length(rownames(my.III.summary)) + max({
     #   sum(num.of.levels) - length(my.factor)
@@ -2692,8 +2697,8 @@ quick.reg.table.default = function(my.model,
             my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
             my.tables.df[this.temp.var, ] = c(
               my.rownames[this.shift.temp],
-              summary(my.model)[[4]][this.shift.temp,1],
-              summary(my.model)[[4]][this.shift.temp,2],
+              NA,
+              NA,
               my.sumsq,
               my.df,
               my.f.val,
@@ -2753,15 +2758,15 @@ quick.reg.table.default = function(my.model,
         my.tables.df[this.temp.var,]=c("Treatment Change",NA,NA,treat.SS,treat.df,glance(my.model)[4],glance(my.model)[5],rep(NA,v.p.rep))
         this.temp.var=this.temp.var+1
       }
-    } else if (ifelse(type=="lm",this.shift.temp-1,this.shift.temp) == my.factor.rownames) {
+    } else if (ifelse({type=="lm" & marginality},this.shift.temp-1,this.shift.temp) %in% my.factor.rownames) {
       if (type == "lm") {
-        my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp-1]
-        my.df = my.III.summary$Df[this.shift.temp-1]
+        my.sumsq = my.III.summary$`Sum Sq`[ifelse(marginality,this.shift.temp-1,this.shift.temp)]
+        my.df = my.III.summary$Df[ifelse(marginality,this.shift.temp-1,this.shift.temp)]
         my.est = my.estimate[this.shift.temp]
         my.std.err = my.std.error[this.shift.temp]
         my.z.val = NA
-        my.f.val = my.III.summary$`F value`[this.shift.temp-1]
-        my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp-1]
+        my.f.val = my.III.summary$`F value`[ifelse(marginality,this.shift.temp-1,this.shift.temp)]
+        my.p.val = my.III.summary$`Pr(>F)`[ifelse(marginality,this.shift.temp-1,this.shift.temp)]
         if(!VIF & !part.eta){
           my.tables.df[this.temp.var, ] = c(
             my.factor[yet.another.var],
@@ -2993,7 +2998,7 @@ quick.reg.table.default = function(my.model,
         my.p.val = my.III.summary$`Pr(>F)`[ifelse(marginality,this.shift.temp-1,this.shift.temp)]
         if (!VIF & !part.eta) {
           my.tables.df[this.temp.var, ] = c(
-            rownames(my.III.summary)[this.shift.temp-1],
+            rownames(my.III.summary)[ifelse(marginality,this.shift.temp-1,this.shift.temp)],
             my.est,
             my.std.err,
             my.sumsq,
