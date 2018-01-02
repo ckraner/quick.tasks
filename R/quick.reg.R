@@ -2244,7 +2244,7 @@ quick.reg.table.default = function(my.model,
 
 
     #### Calculate total SS ####
-    my.total = sum(my.III.summary$`Sum Sq`[ifelse(marginality,1,2):length(my.III.summary$`Sum Sq`)])
+    my.total = sum(my.III.summary$`Sum Sq`[ifelse(marginality,1,1):length(my.III.summary$`Sum Sq`)])
     my.df.total = sum(my.III.summary$Df[ifelse(marginality,1,2):length(my.III.summary$Df)])
     total.intercepts = 1
     my.rownames = c(abbreviate(rownames(my.summary$coefficients), minlength = abbrev.length),
@@ -2426,7 +2426,7 @@ quick.reg.table.default = function(my.model,
     #vars.dev.df=drop1(new.model,test="Chi")$Df[-1]
     #vars.dev.p=drop1(new.model,test="Chi")$`Pr(>Chi)`[-1]
     #total.dev=-2*{as.integer(levels(null.model$info$logLik)[1])-as.integer(levels(new.model$info$logLik)[1])}
-    total.dev.change=treat.dev+my.int.dev.total
+    total.dev.change=treat.dev+ifelse(marginality,0,sum(my.int.dev))
     if(total.intercepts>1){
       total.dev.change.df=total.intercepts*vars.df.total
     }else{
@@ -2434,7 +2434,7 @@ quick.reg.table.default = function(my.model,
     }
 
     total.dev=-2*null.model$logLik
-    resid.dev=-2*new.model$logLik
+    resid.dev=-2*new.model$logLik-ifelse(marginality,0,sum(my.int.dev))
 
 
 
@@ -2668,6 +2668,20 @@ quick.reg.table.default = function(my.model,
           rep(NA, v.p.rep))
 
         this.temp.var=this.temp.var+1
+
+        # print(sum(my.int.dev))
+        # print(total.intercepts)
+        my.tables.df[this.temp.var, ] = c(
+          "(Intercept)",
+          NA,
+          NA,
+          NA,
+          ifelse(marginality,NA,sum(my.int.dev)),
+          total.intercepts,
+          ifelse(marginality,NA,pchisq(sum(my.int.dev),total.intercepts,lower.tail = F)),
+          rep(NA, v.p.rep))
+
+        this.temp.var=this.temp.var+1
       }
       while (i <= total.intercepts) {
         if (type == "lm") {
@@ -2679,10 +2693,10 @@ quick.reg.table.default = function(my.model,
             # my.f.val = my.III.summary$`F value`[this.shift.temp]
             # my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
             my.tables.df[this.temp.var, ] = c(
-              "Intercept",
+              "(Intercept)",
               NA,
               NA,
-              0,
+              NA,
               1,
               NA,
               NA,
@@ -2739,8 +2753,8 @@ quick.reg.table.default = function(my.model,
             my.int.dev.or.confint[i,1],
             my.int.dev.or.confint[i,2],
             my.int.dev[i],
-            NA,
-            NA,
+            1,
+            pchisq(my.int.dev[i],1,lower.tail = F),
             rep(NA, v.p.rep))
 
           #this.temp.var=this.temp.var+1
@@ -3126,7 +3140,9 @@ quick.reg.table.default = function(my.model,
                                           NA,
                                           my.total.change,
                                           my.df.total.change,
-                                          rep(NA, v.p.rep + 2))
+                                      {{my.total.change/my.df.total.change}/{my.III.summary$`Sum Sq`[ifelse(marginality,this.shift.temp-1,this.shift.temp)]/my.III.summary$Df[ifelse(marginality,this.shift.temp-1,this.shift.temp)]}},
+                                      pf({{my.total.change/my.df.total.change}/{my.III.summary$`Sum Sq`[ifelse(marginality,this.shift.temp-1,this.shift.temp)]/my.III.summary$Df[ifelse(marginality,this.shift.temp-1,this.shift.temp)]}},my.df.total.change,my.III.summary$Df[ifelse(marginality,this.shift.temp-1,this.shift.temp)],lower.tail=F),
+                                          rep(NA, v.p.rep))
     my.tables.df[this.temp.var+1, ] = c(
       "Residuals",
       NA,

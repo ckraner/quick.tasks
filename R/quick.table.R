@@ -72,7 +72,7 @@ quick.table=function(my.table,
 
 
   #### Find Intercept, Treatment, Total Change Locations ####
-  int.loc=grep("Intercept",my.table[[1]])
+  int.loc=grep("Intercept",my.table[[1]])[1]
   treat.loc=grep("Treatment Change",my.table[[1]])
   total.loc=grep("Total Change",my.table[[1]])
   end.loc=grep("^Total$",my.table[[1]])
