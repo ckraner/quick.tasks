@@ -2433,8 +2433,8 @@ quick.reg.table.default = function(my.model,
       total.dev.change.df=vars.df.total+total.intercepts
     }
 
-    total.dev=-2*null.model$logLik
-    resid.dev=-2*new.model$logLik-ifelse(marginality,0,sum(my.int.dev))
+    total.dev=-2*null.model$logLik+ifelse(marginality,0,sum(my.int.dev))
+    resid.dev=-2*new.model$logLik
 
 
 
