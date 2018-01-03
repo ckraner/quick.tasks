@@ -563,6 +563,10 @@ quick.reg.manova = function(my.model,
 #' @param my.factor If there are any factors, list them here.
 #' @param show.contrasts If there are factors with df>1, show partial contrasts? (default = F). For lm and glm, this is done using Phia, for manova, it is calculated from SSCP matrices.
 #' @param adjustment Adjustment type to be performed on contrats. Uses p.adjust. (default = "bonferroni")
+#' @param show.intercepts Show information regarding threshold values for binomial or ordinal regression? (default = T).
+#' @param show.int.change Show the change in deviance for the intercept? (default = F). This is a diagnostic as to whether your link function is appropriate and/or if you can generalize to the null model.
+#' @param part.eta Show partial eta square for lm? (default = F).
+#' @param VIF Show variable inflation factor? (default = F).
 #' @param marginality Should SS or deviance for the intercept be neglected? (default = T) If set to F, this is a diagnostic tool to see if the effects of the treatment are at least similar in magnitude to the effects of the intercepts.
 #' @param do.return Return the quick.table or just display it? (default=T)
 #' @param abbrev.length Abbreviation length for rownames. Default is 30 for clm, 15 otherwise.
@@ -580,7 +584,7 @@ quick.reg.default = function(my.model,
                              my.factor = NULL,
                              show.contrasts=F,
                              adjustment = "bonferroni",
-                             show.intercepts=F,
+                             show.intercepts=T,
                              show.int.change=F,
                              part.eta = F,
                              VIF = F,
@@ -1034,7 +1038,7 @@ quick.reg.default = function(my.model,
     #   sum(num.of.levels) - length(my.factor)
     # }, 0) + 1
     #dang.length=7
-    dang.length=length(new.model$coefficients)+length(my.factor)+1
+    dang.length=length(new.model$coefficients)+length(my.factor)+1-ifelse(show.intercepts,0,total.intercepts-1)
   }
 
 
@@ -1051,6 +1055,7 @@ quick.reg.default = function(my.model,
     if (this.shift.temp == 1) {
       i = 1
       if(type=="ord" | type=="glm"){
+        if(show.int.change){
         my.tables.df[this.temp.var, ] = c(
           "Intercept Change",
           NA,
@@ -1062,7 +1067,7 @@ quick.reg.default = function(my.model,
           rep(NA, v.p.rep))
 
         this.temp.var=this.temp.var+1
-
+}
         # print(sum(my.int.dev))
         # print(total.intercepts)
         my.tables.df[this.temp.var, ] = c(
@@ -1077,6 +1082,7 @@ quick.reg.default = function(my.model,
 
         this.temp.var=this.temp.var+1
       }
+      if(type=="lm" | show.intercepts){
       while (i <= total.intercepts) {
         if (type == "lm") {
           if(marginality){
@@ -1158,6 +1164,9 @@ quick.reg.default = function(my.model,
         this.temp.var = this.temp.var + 1
         i = i + 1
 
+      }
+      }else{
+        this.shift.temp = this.shift.temp + 1
       }
       if(type=="ord" | type=="glm"){
         my.tables.df[this.temp.var,]=c("Treatment Change",NA,NA,NA,treat.dev,vars.df,pchisq(treat.dev,vars.df,lower.tail = F))
@@ -1497,7 +1506,7 @@ quick.reg.default = function(my.model,
         if (!is.null(my.factor)) {
           this.shift.temp = this.shift.temp - ord.temp
         }else{
-          this.shift.temp=this.shift.temp-total.intercepts
+          this.shift.temp=this.shift.temp-ifelse(!show.intercepts,1,{total.intercepts})
         }
         my.tables.df[this.temp.var, ] = c(names(vars.or)[this.shift.temp],
                                           vars.or[{this.shift.temp}],
@@ -1518,7 +1527,7 @@ quick.reg.default = function(my.model,
         if (!is.null(my.factor)) {
           this.shift.temp = this.shift.temp + ord.temp
         }else{
-          this.shift.temp=this.shift.temp+total.intercepts
+          this.shift.temp=this.shift.temp+ifelse(!show.intercepts,1,{total.intercepts})
         }
         #ord.temp = ord.temp + 1
       }

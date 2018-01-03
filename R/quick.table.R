@@ -1,3 +1,21 @@
+#' Print Method for quick.table
+#'
+#' print function for class "quick.table"
+#'
+#' @param q.tab quick.table object
+#' @param type Type of print: 1 = to viewer, 2 = to console
+#' @return List of lists with 3 pieces: null model, pre models, and full models
+#' @export
+#' @keywords Explore
+
+print.quick.table=function(q.tab,type=1){
+  if(type==1){
+    update.quick.table(q.tab)
+  }else{
+    print.data.frame(q.tab)
+  }
+}
+
 #' Table Printer
 #'
 #' Helper function to turn tables into html tables
@@ -48,7 +66,9 @@ quick.table=function(my.table,
   attr(my.table,"quick.type")=type
   attr(my.table,"quick.footer")=the.footer
   attr(my.table,"quick.marginality")=marginality
-  attr(my.table,"class")=c(attr(my.table,"class"),"quick.table")
+  attr(my.table,"class")=c("quick.table",attr(my.table,"class"))
+  attr(my.table,"quick.black")=make.black
+  attr(my.table,"quick.red")=make.red
 
 
   if(type=="manova" | type=="stats::manova"){
@@ -263,6 +283,7 @@ quick.table=function(my.table,
 #' @keywords Explore
 quick.table.check=function(q.tab){
 
+  type=attr(q.tab,"quick.type")
   #### Turn HTML into something easily useable
   row.check=attr(q.tab,"quick.rows")
   row.split=strsplit(row.check,"</tr>")
@@ -297,6 +318,9 @@ quick.table.check=function(q.tab){
     round.rows=c(2,3,4,6)
     p.val.row=7
   }else if(type=="glm"){
+    round.rows=c(2,3,4,5)
+    p.val.row=7
+  }else if(type=="ord"){
     round.rows=c(2,3,4,5)
     p.val.row=7
   }
@@ -335,9 +359,9 @@ quick.table.check=function(q.tab){
 #' @return Logical of whether all matches
 #' @export
 #' @keywords Explore
-quick.table.update=function(q.tab,make.red=NULL,make.black=NULL,the.caption=my.caption,show.footer=T,new.rownames.int=NULL,
+update.quick.table=function(q.tab,make.red=found.red,make.black=found.black,the.caption=my.caption,show.footer=T,new.rownames.int=NULL,
                             new.rownames.treat=NULL,swap.na=NULL,the.round=my.round,print.type="full",
-                            print.now=T,do.return=F){
+                            print.now=T,do.return=T){
   my.check=quick.table.check(q.tab)
   if(my.check){
     my.caption=attr(q.tab,"quick.caption")
@@ -346,6 +370,8 @@ quick.table.update=function(q.tab,make.red=NULL,make.black=NULL,the.caption=my.c
     my.ab.len=attr(q.tab,"abbrev.length")
     my.marginality=attr(q.tab,"quick.marginality")
     my.footer=attr(q.tab,"quick.footer")
+    found.red=attr(q.tab,"quick.red")
+    found.black=attr(q.tab,"quick.black")
     if(my.type=="manova" | my.type=="stats::manova"){
     my.test.stat=attr(q.tab,"quick.test.stat")
     }else{
