@@ -3,7 +3,16 @@
 #' Beautiful tables in HTML. Creates advanced ANOVA, ANODE, and MANOVA
 #' tables reporting relevant variable changes, treatment changes, and intercept
 #' diagnostics. Also can report factor contrasts within the table. For MANOVA tables,
-#' latent variable ANCOVAs can also be calculated within the MANOVA table.
+#' latent variable ANCOVAs can also be calculated within the MANOVA table. Normally
+#' only requires my.model and my.factor.
+#'
+#' This package combines [summary], [anova], and [car::Anova] to create ANOVA, ANODE,
+#' and MANOVA tables. On top of providing normal information about the current model,
+#' this package can show contrasts for multi-level factors. In addition to the current
+#' model, treatment changes from null provide basic fit diagnostics.
+#'
+#' For models of class [lm], a basic ANOVA table will be created with Type II sums of
+#' squares.
 #'
 #' @param my.model Model to be tested. Currently supported are lm, glm, clm, manova.
 #' @param my.factor If there are any factors, list them here.
@@ -54,6 +63,8 @@ quick.reg = function(my.model,
 #' MANOVA tables in HTML
 #'
 #' quick.reg method for class "manova".
+#'
+#' Need to put some description of method here.
 #'
 #' @param my.model Model to be tested. Currently supported are lm, glm, clm, manova.
 #' @param my.factor If there are any factors, list them here.

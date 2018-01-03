@@ -22,5 +22,6 @@ Imports: pixiedust,
     ggplot2
 Suggests: ordinal,
     ordinal
+Roxygen: list(markdown = TRUE)
     
     

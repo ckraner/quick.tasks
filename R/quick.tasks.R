@@ -7,17 +7,25 @@
 #' Partial contrasts for ANOVA and MANOVA tables
 #'
 #' Adds Contrasts and Latent Contrasts to nested table
-#' for creating overall MANOVA and ANOVA tables.
+#' for creating overall MANOVA tables.
 #'
-#' @param my.nested.table Model.
-#' @param SS.type Type of sums of squares to report, either 2 or 3. (default = 3)
-#' @param adjustment P-value adjustment sent to p.adjust (default = "bonferroni")
+#' This package takes the SSCP matrices from [quick.reg()] and
+#' calculates partial contrasts directly. Also can create
+#' latent contrasts.
+#'
+#' @param my.nested.table Table of models and SSCP matrices from [quick.reg()]
+#' @param adjustment P-value adjustment sent to p.adjust (default = "bonferroni").
+#' @param latent.cont Should latent contrasts also be computed? (default = F).
 #' @param abbrev.length Integer telling how long of a label is too long. Longer than this and will be condensed (default=15)
 #' @return Nested table with added rows and information (Unfortunately as character at the moment)
 #' @keywords Explore
 #' @examples
 #' quick.contrast(my.nested.table)
-quick.part.cont=function(my.nested.table,marginality,adjustment="bonferroni",abbrev.length=30,latent.cont=F){
+
+quick.part.cont=function(my.nested.table,
+                         adjustment="bonferroni",
+                         latent.cont=F,
+                         abbrev.length=30){
   #### Get y levels
   my.y.levels=dim(my.nested.table[1,4][[1]][[1]])[1]
 
@@ -37,11 +45,7 @@ quick.part.cont=function(my.nested.table,marginality,adjustment="bonferroni",abb
       #### If should, make contrast
       my.new.df=my.nested.table[p,3][[1]]$model
       my.MSE=mean(my.nested.table[p,3][[1]]$residuals^2)
-      if(!marginality){
-      the.resid.SS=sum(diag(my.nested.table[p,4][[1]][[2]]))
-      }else{
         the.resid.SS=sum(diag(my.nested.table[p,4][[1]][[2]][[1]]))
-      }
       the.resid.df=my.nested.table[p,3][[1]]$df.residual
 
       if(latent.cont){

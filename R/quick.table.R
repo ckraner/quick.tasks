@@ -25,7 +25,7 @@ print.quick.table=function(q.tab,type=1){
 #' @param test.stat Test stat used in MANOVA
 #' @param print.type "full" for full html, "part" for just <div>
 #' @param the.caption Caption for top of table
-#' @param the.footer
+#' @param the.footer What is in the footer? This is a single, centered div tag.
 #' @return List of lists with 3 pieces: null model, pre models, and full models
 #' @keywords Explore
 quick.table=function(my.table,
@@ -280,7 +280,7 @@ quick.table=function(my.table,
 #'
 #' @param q.tab quick.table
 #' @return Logical of whether all matches
-#' @keywords Explore
+#' @keywords internal
 quick.table.check=function(q.tab){
 
   type=attr(q.tab,"quick.type")
