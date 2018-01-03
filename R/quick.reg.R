@@ -321,20 +321,21 @@ quick.reg.manova = function(my.model,
         }
 
         #### Put in contrasts ####
+        #### HERE ####
         #### Not right. Don't have it decomposed this way.
         if(show.contrasts & !show.latent & my.i!=1){
           #### Check length
-          if(!is.na(my.nested.table[my.i,9])){
+          if(!is.na(my.nested.table[my.i,8])){
             #other.manova.grep=grep(paste("^",names(my.SSP.treat)[my.i],"$",sep=""),names(my.model$xlevels))
             for(k in 1:as.numeric(my.nested.table[my.i,7])){
-              my.name=my.nested.table[my.i,9][[1]][k,1]
-              my.f.val=as.numeric(my.nested.table[my.i,9][[1]][k,2])
-              my.SS=as.numeric(my.nested.table[my.i,9][[1]][k,3])
+              my.name=my.nested.table[my.i,8][[1]][k,1]
+              my.f.val=as.numeric(my.nested.table[my.i,8][[1]][k,2])
+              my.SS=as.numeric(my.nested.table[my.i,8][[1]][k,3])
               my.test.stat=NA
               my.df=NA
               my.mult.df=my.y.levels
               my.resid.df=the.resid.df-my.y.levels+1
-              my.p.val=as.numeric(my.nested.table[my.i,9][[1]][k,4])
+              my.p.val=as.numeric(my.nested.table[my.i,8][[1]][k,4])
 
               my.manova.table[my.line.var,]=c(abbreviate(my.name,abbrev.length),my.test.stat,my.f.val,my.SS,my.df,my.mult.df,my.resid.df,my.p.val)
               my.line.var=my.line.var+1
