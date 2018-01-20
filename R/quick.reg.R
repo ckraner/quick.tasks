@@ -1183,7 +1183,7 @@ quick.reg.default = function(my.model,
         my.tables.df[this.temp.var,]=c("Treatment Change",NA,NA,NA,treat.dev,vars.df,pchisq(treat.dev,vars.df,lower.tail = F))
         this.temp.var=this.temp.var+1
       }else{
-        my.tables.df[this.temp.var,]=c("Treatment Change",NA,NA,treat.SS,treat.df,glance(my.model)[4],glance(my.model)[5],rep(NA,v.p.rep))
+        my.tables.df[this.temp.var,]=c("Treatment Change",NA,NA,treat.SS,treat.df,my.summary$fstatistic[1],pf(my.summary$fstatistic[1],my.summary$fstatistic[2],my.summary$fstatistic[3],lower.tail=F),rep(NA,v.p.rep))
         this.temp.var=this.temp.var+1
       }
     } else if (ifelse({type=="lm" & marginality},this.shift.temp-1,this.shift.temp) %in% my.factor.rownames) {

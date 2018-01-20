@@ -4,7 +4,7 @@ quick.SSCP=function(my.model, myDF, marginality, show.contrasts, my.envir, ...){
 quick.SSCP.manova=function(my.model, myDF, marginality, show.contrasts, show.latent, my.envir){
   #### Split and get formulas ####
 
-  my.formula.lists=quick.tasks::quick.formula(my.model,my.envir)
+  my.formula.lists=quick.formula(my.model,my.envir)
 
 
 
