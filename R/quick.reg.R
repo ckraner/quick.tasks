@@ -213,7 +213,7 @@ quick.reg.manova = function(my.model,
 
   #### Get totals ####
   the.total=the.resid+treat.total+if(!marginality){sum(diag(treat.model[[1]][[1]][[1]]))}else{0}
-  the.total.df=the.resid.df+treat.df+my.y.levels
+  the.total.df=the.resid.df+treat.total.df+my.y.levels
 
   #### Partial totals
   partial.total=part.resid.total+part.treat.total+treat.model[[1]][[1]][[1]]
