@@ -1,7 +1,7 @@
 quick.SSCP=function(my.model, myDF, marginality, show.contrasts, my.envir, ...){
   UseMethod("quick.SSCP", my.model)
 }
-quick.SSCP.manova=function(my.model, myDF, marginality, show.contrasts, show.latent, my.envir){
+quick.SSCP.manova=function(my.model, myDF, marginality, show.contrasts, show.latent, my.envir,adjustment){
   #### Split and get formulas ####
 
   my.formula.lists=quick.formula(my.model,my.envir)
@@ -75,7 +75,7 @@ quick.SSCP.manova=function(my.model, myDF, marginality, show.contrasts, show.lat
 
   #### Get Contrasts ####
   if(show.contrasts){
-    my.nested.table=quick.part.cont(my.nested.table,marginality,latent.cont=ifelse(show.latent,T,F))
+    my.nested.table=quick.part.cont(my.nested.table,adjustment,latent.cont=ifelse(show.latent,T,F))
   }
 
   return(my.nested.table)

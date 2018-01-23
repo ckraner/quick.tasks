@@ -50,7 +50,7 @@ quick.reg = function(my.model,
   library(dplyr)
 
   #### Find type ####
-  my.reg.type=quick.type(my.model)
+  #my.reg.type=quick.type(my.model)
 
 
 
@@ -148,7 +148,7 @@ quick.reg.manova = function(my.model,
   my.new.df=my.model$model
   my.envir=environment()
   SS.type = 2
-  my.nested.table=quick.SSCP(my.model, myDF, marginality=T, show.contrasts, show.latent,my.envir)
+  my.nested.table=quick.SSCP(my.model, myDF, marginality=T, show.contrasts, show.latent,my.envir,adjustment)
   #### Get treatment ####
   treat.model=my.nested.table[dim(my.nested.table)[1],4]
   my.null.model=my.nested.table[1,3]

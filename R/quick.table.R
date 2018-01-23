@@ -382,7 +382,7 @@ update.quick.table=function(q.tab,make.red=found.red,make.black=found.black,the.
     }else{
       my.colnames=attr(q.tab,"quick.col.names")
     }
-    new.q.tab=quick.table(q.tab,type,test.stat=my.test.stat,print.type=print.type,
+    new.q.tab=quick.table(q.tab,type=my.type,test.stat=my.test.stat,print.type=print.type,
                the.caption=the.caption,the.footer=my.footer,
                abbrev.length=my.ab.len,
                marginality=my.marginality,
