@@ -52,10 +52,10 @@ quick.part.cont=function(my.nested.table,
         #### Latent Mean Square Error
         my.latent.MSE=NULL
         for(j in 1:my.y.levels){
-          if(i==1){
-            my.latent.MSE=as.numeric(mean(my.contrast.model$residuals[i]^2))
+          if(j==1){
+            my.latent.MSE=as.numeric(mean(my.nested.table[p,3][[1]]$residuals[j,]^2))
           }else{
-            my.latent.MSE=c(my.latent.MSE,as.numeric(mean(my.contrast.model$residuals[i]^2)))
+            my.latent.MSE=c(my.latent.MSE,as.numeric(mean(my.nested.table[p,3][[1]]$residuals[j,]^2)))
           }
         }
       }
