@@ -470,3 +470,55 @@ aggr_plot <- aggr(my.df, col=c('navyblue','red'), numbers=TRUE,
                   sortVars=TRUE, labels=names(my.df), cex.axis=.7, gap=3,
                   ylab=c("Histogram of missing data","Pattern"))
 }
+
+
+#' Quick ROC curve and Area Under ROC Curve
+#'
+#' Takes GLM and computes ROC curve using ROCR library.
+#'
+#' @param my.glm Object of class "glm"
+#' @param title Main title for graph (default: "ROC Curve")
+#' @param cutoff Cutoff point? (default: 0.5)
+#' @param do.plot Plot ROC Curve? (default: T)
+#'
+#' @return List with area under curve and plot
+#' @export
+#'
+
+quick.ROC=function(my.glm,title="ROC Curve",cutoff=0.5,do.plot=T){
+  # ROC Curve
+  library(ROCR)
+  p <- predict(my.glm,newdata=my.glm$data, type="response")
+  p=ifelse(p>cutoff,1,0)
+  pr <- prediction(p, as.factor(my.glm$y))
+
+  if(do.plot){
+    prf <- performance(pr, measure = "tpr", x.measure = "fpr")
+    plot(prf,main=title)
+  }
+
+  auc <- performance(pr, measure = "auc")
+  sens=performance(pr, measure="sens",x.measure="spec")
+  my.frame=as.data.frame(matrix(ncol=4))
+  my.frame=c(cutoff,sens@y.values[[1]][2],sens@x.values[[1]][2],auc@y.values[[1]])
+  names(my.frame)=c("Cutoff","Sensitivity","Specificity","AUC")
+  return(my.frame)
+}
+
+#' ROC Diagnositics table
+#'
+#' Looks at Sensitivity, Specificity, and Area Under the Curve
+#' for a range of cutoff values.
+#'
+#' @param my.glm Object of class "glm"
+#' @param vals List of cutoff values to check.
+#'
+#' @return Matrix of values for each cutoff value.
+#' @export
+#'
+#' @examples
+#' quick.ROC.diag(my.glm,seq(0.4,0.6,by=0.05))
+
+quick.ROC.diag=function(my.glm,vals){
+  return(t(sapply(vals,quick.tasks::quick.ROC,my.glm=my.glm,do.plot=F,title="ROC Curve")))
+}
