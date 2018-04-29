@@ -22,7 +22,7 @@ quick.eq.check=function(val.1,val.2){
   if(is.na(val.1) | is.na(val.2)){
     return(is.na(val.1) & is.na(val.2))
   }else{
-  return(val.1==val.2)
+    return(val.1==val.2)
   }
 }
 
@@ -37,13 +37,13 @@ quick.eq.check=function(val.1,val.2){
 #' @return List of lists with 3 pieces: null model, pre models, and full models
 #' @keywords Explore
 quick.p.val=function(my.table3,p.val.row){
-for(i in 1:dim(my.table3)[1]){
-  if(!is.na(my.table3[i,p.val.row])){
-    my.table3[i,p.val.row]=round(as.numeric(my.table3[i,p.val.row]),digits=3)
-    if(my.table3[i,p.val.row]==0){my.table3[i,p.val.row]="<.001"}
-    if(my.table3[i,p.val.row]==1){my.table3[i,p.val.row]=">.999"}
+  for(i in 1:dim(my.table3)[1]){
+    if(!is.na(my.table3[i,p.val.row])){
+      my.table3[i,p.val.row]=round(as.numeric(my.table3[i,p.val.row]),digits=3)
+      if(my.table3[i,p.val.row]==0){my.table3[i,p.val.row]="<.001"}
+      if(my.table3[i,p.val.row]==1){my.table3[i,p.val.row]=">.999"}
+    }
   }
-}
   return(my.table3)
 }
 
@@ -85,8 +85,8 @@ quick.formula=function(my.model,my.envir){
 
 
           if(c>1){
-          my.ind.vars.perm[[2]]=rbind(my.ind.vars.perm[[2]],c(my.temp.vars,my.ind.vars[[1]][c]))
-          my.ind.vars.perm[[1]]=rbind(my.ind.vars.perm[[1]],my.temp.vars)
+            my.ind.vars.perm[[2]]=rbind(my.ind.vars.perm[[2]],c(my.temp.vars,my.ind.vars[[1]][c]))
+            my.ind.vars.perm[[1]]=rbind(my.ind.vars.perm[[1]],my.temp.vars)
           }else{
             my.ind.vars.perm[[2]]=as.data.frame(matrix(ncol={length(my.ind.vars)},nrow=1))
             my.ind.vars.perm[[2]]=rbind(c(my.temp.vars,my.ind.vars[[1]][c]))
@@ -154,7 +154,7 @@ quick.latent=function(SSCP.list,marginality){
   library(purrr)
   temp.latent.SSCP.eigen=purrr::map(SSCP.list[[1]],quick.latent.reduce)
   if(!marginality){
-  temp.latent.SSCP.error=quick.latent.reduce(SSCP.list[[2]])
+    temp.latent.SSCP.error=quick.latent.reduce(SSCP.list[[2]])
   }else{
     temp.latent.SSCP.error=quick.latent.reduce(SSCP.list[[2]][[1]])
   }
@@ -194,9 +194,9 @@ quick.latent.reduce=function(my.part){
 #' @keywords Explore
 quick.SSP.matrix=function(my.summary,marginality){
   if(!marginality){
-  library(car)
-  car.sum=car::Anova(my.summary,type=3)
-  sum.SSCP=list(car.sum$SSP,car.sum$SSPE)
+    library(car)
+    car.sum=car::Anova(my.summary,type=3)
+    sum.SSCP=list(car.sum$SSP,car.sum$SSPE)
   }else{
     sum.sum=summary(my.summary,intercept=T)
     sum.SSCP=list(sum.sum$SS[-length(sum.sum$SS)],sum.sum$SS[length(sum.sum$SS)])
@@ -225,7 +225,7 @@ quick.formula.all=function(my.model,my.envir){
       if(length(grep("cbind",my.vars[[2]]))>0){
         my.dep.var="my.model$model[[1]]"
       }else{
-      my.dep.var=my.vars[[2]]
+        my.dep.var=my.vars[[2]]
       }
       my.ind.vars=strsplit(my.vars[[3]],"\\+")
 
@@ -389,4 +389,84 @@ quick.type=function(model){
     stop("Type not supported")
   }
   return(my.reg.type)
+}
+
+
+#' Quickly copy attributes from original data frame
+#'
+#' When you make a subset of data frames and do some other operations,
+#' R unfortunately loses some of the attributes. This will help get them
+#' back for use in label.explor.r
+#'
+#' @param my.new.df New data frame, normally subset of original
+#' @param my.orig.df Original data frame
+#'
+#' @return New data frame with all relevant attributes from original df copied over
+#' @export
+
+quick.attribs=function(my.new.df,my.orig.df){
+  for(i in 1:dim(my.new.df)[2]){
+    if(length(grep(paste("^",colnames(my.new.df)[i],"$",sep=""),colnames(my.orig.df)))>0){
+      g=grep(paste("^",colnames(my.new.df)[i],"$",sep=""),colnames(my.orig.df))
+      attributes(my.new.df[[i]])=attributes(my.orig.df[[g]])
+    }else{
+      print(paste(colnames(my.new.df)[i],"does not have a match."))
+    }
+  }
+  return(my.new.df)
+}
+
+#' Remove rows with all NA
+#'
+#' @param my.df Dataframe
+#'
+#' @return Dataframe
+#' @export
+#'
+
+quick.na.row=function(my.df){
+  #### Remove rows with all NA
+  my.df=my.df[rowSums(is.na(my.df))!=ncol(my.df),]
+  return(my.df)
+}
+
+#' Change certain numbers to NA
+#'
+#' When NA do not come through from the SPSS dataset, apply value to all.
+#'
+#' @param my.df Dataframe
+#' @param nums list of numeric numbers to turn to NA indiscriminantly
+#'
+#' @return Dataframe
+#' @export
+#'
+
+quick.to.na=function(my.df,nums){
+
+  for(i in 1:length(nums)){
+    #### Remove 9's
+    my.df=sapply(my.df, function(x) ifelse(x==nums[i],NA,x))
+    my.df=as.data.frame(my.df)
+  }
+  return(my.df)
+}
+
+
+#' Quick VIM Aggregate Missing Plot
+#'
+#' Simple code, but used often enough that needed to be put in a function.
+#' See the missing by calling the object. See graph with plot().
+#'
+#' @param my.df Dataframe
+#'
+#' @return VIM Object
+#' @export
+#'
+
+quick.VIM=function(my.df){
+#### VIM
+library(VIM)
+aggr_plot <- aggr(my.df, col=c('navyblue','red'), numbers=TRUE,
+                  sortVars=TRUE, labels=names(my.df), cex.axis=.7, gap=3,
+                  ylab=c("Histogram of missing data","Pattern"))
 }

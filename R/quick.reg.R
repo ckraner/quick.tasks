@@ -108,7 +108,7 @@ quick.reg.manova = function(my.model,
                             SS.type=2,
                             myDF = my.found.df,
                             type = my.reg.type
-                            ) {
+) {
 
 
   #### Find type ####
@@ -207,7 +207,7 @@ quick.reg.manova = function(my.model,
   #### Latent totals
   if(show.latent){
 
-      latent.part.resid.total=latent.treat.model[[1]][[2]]
+    latent.part.resid.total=latent.treat.model[[1]][[2]]
 
   }
 
@@ -926,7 +926,7 @@ quick.reg.default = function(my.model,
                               "p.eta",
                               "VIF")
     }
-  } else if (type == "glm" & VIF) {
+  } else if (VIF & type == "glm") {
     my.VIF = car::vif(my.model)
     names(my.tables.df) = c("var",
                             "p.odd",
@@ -1044,6 +1044,9 @@ quick.reg.default = function(my.model,
     #   sum(num.of.levels) - length(my.factor)
     # }, 0) + 1
     dang.length=length(new.model$coefficients)-sum(num.of.levels)+length(num.of.levels)+total.intercepts+1
+    if(is.null(my.factor)){
+      dang.length=dang.length-1
+    }
   } else{
     # dang.length = total.intercepts + length(rownames(my.III.summary)) + max({
     #   sum(num.of.levels) - length(my.factor)
@@ -1067,18 +1070,18 @@ quick.reg.default = function(my.model,
       i = 1
       if(type=="ord" | type=="glm"){
         if(show.int.change){
-        my.tables.df[this.temp.var, ] = c(
-          "Intercept Change",
-          NA,
-          NA,
-          NA,
-          my.int.dev.total,
-          my.int.dev.df,
-          pchisq(my.int.dev.total,my.int.dev.df,lower.tail = F),
-          rep(NA, v.p.rep))
+          my.tables.df[this.temp.var, ] = c(
+            "Intercept Change",
+            NA,
+            NA,
+            NA,
+            my.int.dev.total,
+            my.int.dev.df,
+            pchisq(my.int.dev.total,my.int.dev.df,lower.tail = F),
+            rep(NA, v.p.rep))
 
-        this.temp.var=this.temp.var+1
-}
+          this.temp.var=this.temp.var+1
+        }
         # print(sum(my.int.dev))
         # print(total.intercepts)
         my.tables.df[this.temp.var, ] = c(
@@ -1094,93 +1097,93 @@ quick.reg.default = function(my.model,
         this.temp.var=this.temp.var+1
       }
       if(type=="lm" | show.intercepts){
-      while (i <= total.intercepts) {
-        if (type == "lm") {
-          if(marginality){
-            # my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp]
-            # my.df = my.III.summary$Df[this.shift.temp]
+        while (i <= total.intercepts) {
+          if (type == "lm") {
+            if(marginality){
+              # my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp]
+              # my.df = my.III.summary$Df[this.shift.temp]
+              # my.est = my.estimate[this.shift.temp]
+              # my.std.err = my.std.error[this.shift.temp]
+              # my.f.val = my.III.summary$`F value`[this.shift.temp]
+              # my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
+              my.tables.df[this.temp.var, ] = c(
+                "(Intercept)",
+                NA,
+                NA,
+                NA,
+                1,
+                NA,
+                NA,
+                rep(NA, v.p.rep)
+              )
+            }else{
+              my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp]
+              my.df = my.III.summary$Df[this.shift.temp]
+              my.est = my.estimate[this.shift.temp]
+              my.std.err = my.std.error[this.shift.temp]
+              my.f.val = my.III.summary$`F value`[this.shift.temp]
+              my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
+              my.tables.df[this.temp.var, ] = c(
+                my.rownames[this.shift.temp],
+                NA,
+                NA,
+                my.sumsq,
+                my.df,
+                my.f.val,
+                my.p.val,
+                rep(NA, v.p.rep)
+              )
+            }
+
+          } else if(type=="glm"){
+            #### HERE IS WHERE I LEFT OFF!! ####
+            # my.or = exp(my.estimate[this.shift.temp])
             # my.est = my.estimate[this.shift.temp]
+            # my.z.val = my.summary$coefficients[this.shift.temp, 3]
             # my.std.err = my.std.error[this.shift.temp]
-            # my.f.val = my.III.summary$`F value`[this.shift.temp]
-            # my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
+            #my.dev=my.III.summary$`LR Chisq`[this.shift.temp]
+            #my.df=my.III.summary$Df[this.shift.temp]
+            # my.p.val = my.summary$coefficients[{
+            #   this.shift.temp
+            #}, 4]
+
             my.tables.df[this.temp.var, ] = c(
-              "(Intercept)",
-              NA,
-              NA,
-              NA,
+              paste(names(attr(my.model$model[[i]],"labels"))[1],"-",names(attr(my.model$model[[i]],"labels"))[2],sep=""),
+              my.int.dev.or[i],
+              my.int.dev.or.confint[1],
+              my.int.dev.or.confint[2],
+              my.int.dev[i],
               1,
               NA,
-              NA,
-              rep(NA, v.p.rep)
-            )
+              rep(NA, v.p.rep))
+
+            #this.temp.var=this.temp.var+1
+            #my.tables.df[this.temp.var,]=c("Treatment",NA,NA,NA,total.dev,total.df,dchisq(total.dev,total.df),rep(NA,v.p.rep))
+
           }else{
-            my.sumsq = my.III.summary$`Sum Sq`[this.shift.temp]
-            my.df = my.III.summary$Df[this.shift.temp]
-            my.est = my.estimate[this.shift.temp]
-            my.std.err = my.std.error[this.shift.temp]
-            my.f.val = my.III.summary$`F value`[this.shift.temp]
-            my.p.val = my.III.summary$`Pr(>F)`[this.shift.temp]
             my.tables.df[this.temp.var, ] = c(
-              my.rownames[this.shift.temp],
-              NA,
-              NA,
-              my.sumsq,
-              my.df,
-              my.f.val,
-              my.p.val,
-              rep(NA, v.p.rep)
-            )
+              my.int.names[i],
+              my.int.dev.or[i],
+              my.int.dev.or.confint[i,1],
+              my.int.dev.or.confint[i,2],
+              my.int.dev[i],
+              1,
+              pchisq(my.int.dev[i],1,lower.tail = F),
+              rep(NA, v.p.rep))
+
+            #this.temp.var=this.temp.var+1
+
           }
-
-        } else if(type=="glm"){
-          #### HERE IS WHERE I LEFT OFF!! ####
-          # my.or = exp(my.estimate[this.shift.temp])
-          # my.est = my.estimate[this.shift.temp]
-          # my.z.val = my.summary$coefficients[this.shift.temp, 3]
-          # my.std.err = my.std.error[this.shift.temp]
-          #my.dev=my.III.summary$`LR Chisq`[this.shift.temp]
-          #my.df=my.III.summary$Df[this.shift.temp]
-          # my.p.val = my.summary$coefficients[{
-          #   this.shift.temp
-          #}, 4]
-
-          my.tables.df[this.temp.var, ] = c(
-            paste(names(attr(my.model$model[[i]],"labels"))[1],"-",names(attr(my.model$model[[i]],"labels"))[2],sep=""),
-            my.int.dev.or[i],
-            my.int.dev.or.confint[1],
-            my.int.dev.or.confint[2],
-            my.int.dev[i],
-            1,
-            NA,
-            rep(NA, v.p.rep))
-
-          #this.temp.var=this.temp.var+1
-          #my.tables.df[this.temp.var,]=c("Treatment",NA,NA,NA,total.dev,total.df,dchisq(total.dev,total.df),rep(NA,v.p.rep))
-
-        }else{
-          my.tables.df[this.temp.var, ] = c(
-            my.int.names[i],
-            my.int.dev.or[i],
-            my.int.dev.or.confint[i,1],
-            my.int.dev.or.confint[i,2],
-            my.int.dev[i],
-            1,
-            pchisq(my.int.dev[i],1,lower.tail = F),
-            rep(NA, v.p.rep))
-
-          #this.temp.var=this.temp.var+1
+          this.shift.temp = this.shift.temp + 1
+          this.temp.var = this.temp.var + 1
+          i = i + 1
 
         }
-        this.shift.temp = this.shift.temp + 1
-        this.temp.var = this.temp.var + 1
-        i = i + 1
-
-      }
       }else{
         this.shift.temp = this.shift.temp + 1
       }
       if(type=="ord" | type=="glm"){
-        my.tables.df[this.temp.var,]=c("Treatment Change",NA,NA,NA,treat.dev,vars.df,pchisq(treat.dev,vars.df,lower.tail = F))
+        my.tables.df[this.temp.var,]=c("Treatment Change",NA,NA,NA,treat.dev,vars.df,pchisq(treat.dev,vars.df,lower.tail = F),rep(NA,v.p.rep))
         this.temp.var=this.temp.var+1
       }else{
         my.tables.df[this.temp.var,]=c("Treatment Change",NA,NA,treat.SS,treat.df,my.summary$fstatistic[1],pf(my.summary$fstatistic[1],my.summary$fstatistic[2],my.summary$fstatistic[3],lower.tail=F),rep(NA,v.p.rep))
@@ -1506,6 +1509,7 @@ quick.reg.default = function(my.model,
                                             vars.dev[this.shift.temp],
                                             vars.dev.df[this.shift.temp],
                                             vars.dev.p[this.shift.temp],
+                                            car::vif(my.model)[this.shift.temp-1],
                                             rep(NA,v.p.len))
         }
         # if (!is.null(my.factor)) {
@@ -1618,7 +1622,7 @@ quick.reg.default = function(my.model,
     }else{
       the.footer=NULL
     }
-    my.html.table=quick.table(my.tables.df,"glm",marginality=marginality, abbrev.length = abbrev.length,the.footer = the.footer)
+    my.html.table=quick.table(my.tables.df,"glm",marginality=marginality, abbrev.length = abbrev.length,the.footer = the.footer,VIF=VIF)
 
   }
 

@@ -44,7 +44,9 @@ quick.table=function(my.table,
                      print.now=T,
                      show.footer=T,
                      make.red=NULL,
-                     make.black=NULL){
+                     make.black=NULL,
+                     VIF=F,
+                     part.eta=F){
 
   #### Inits ####
   library(purrr)
@@ -69,6 +71,8 @@ quick.table=function(my.table,
   attr(my.table,"class")=c("quick.table",attr(my.table,"class"))
   attr(my.table,"quick.black")=make.black
   attr(my.table,"quick.red")=make.red
+  attr(my.table,"VIF")=VIF
+  attr(my.table,"part.eta")=part.eta
 
 
   if(type=="manova" | type=="stats::manova"){
@@ -78,15 +82,28 @@ quick.table=function(my.table,
                   paste("Type ",ifelse(SS.type==2,"II","III"),"<br />Sums of<br />Squares"),
                   "dF","Mult<br />dF","Resid<br />dF","Pr(>F)")
   }else if(type=="lm"){
-    round.rows=c(2,3,4,6)
+
     p.val.row=7
+    if(!VIF){
+    round.rows=c(2,3,4,6)
     my.colnames=c("Variable","Estimate","Standard <br />Error",
                   paste("Type ",ifelse(SS.type==2,"II","III"),"<br />Sums of<br />Squares"),
                   "dF","F-Value","Pr(>F)")
+    }else{
+      round.rows=c(2,3,4,6,8)
+      my.colnames=c("Variable","Estimate","Standard <br />Error",
+                    paste("Type ",ifelse(SS.type==2,"II","III"),"<br />Sums of<br />Squares"),
+                    "dF","F-Value","Pr(>F)","VIF")
+    }
   }else if(type=="glm"){
-    round.rows=c(2,3,4,5)
     p.val.row=7
+    if(!VIF){
+    round.rows=c(2,3,4,5)
     my.colnames=c("Variable","Odds <br /> Ratio","2.5%","97.5%","Deviance","df","Pr(><span style=\"font-size:125%;\">&chi;</span><sup>2</sup>)")
+    }else{
+      round.rows=c(2,3,4,5,8)
+      my.colnames=c("Variable","Odds <br /> Ratio","2.5%","97.5%","Deviance","df","Pr(><span style=\"font-size:125%;\">&chi;</span><sup>2</sup>)","VIF")
+    }
   }
   attr(my.table,"quick.col.names")=col.names
 
@@ -234,7 +251,7 @@ quick.table=function(my.table,
     }
 
     #### Rest of row
-    for(j in 2:p.val.row){
+    for(j in 2:{ifelse(VIF,{p.val.row+1},p.val.row)}){
       my.line=paste(my.line,"<td>",my.table2[i,j],"</td>")
     }
 

@@ -8,7 +8,8 @@ quick.table(my.table, type, test.stat = "Pillai", print.type = "full",
   the.caption = NA, the.footer = NA, abbrev.length = ab.len,
   marginality = T, new.rownames.int = NULL, new.rownames.treat = NULL,
   swap.na = NULL, round.num = 2, col.names = my.colnames, print.now = T,
-  show.footer = T, make.red = NULL, make.black = NULL)
+  show.footer = T, make.red = NULL, make.black = NULL, VIF = F,
+  part.eta = F)
 }
 \arguments{
 \item{my.table}{Final table ready to be turned into html}
