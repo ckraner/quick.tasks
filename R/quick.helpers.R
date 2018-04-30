@@ -409,8 +409,8 @@ quick.type=function(model){
 
 quick.attribs=function(my.new.df,my.orig.df){
   for(i in 1:dim(my.new.df)[2]){
-    if(length(grep(paste("^",colnames(my.new.df)[i],"$",sep=""),colnames(my.orig.df)))>0){
-      g=grep(paste("^",colnames(my.new.df)[i],"$",sep=""),colnames(my.orig.df))
+    if(length(grep(paste("^",tolower(colnames(my.new.df)[i]),"$",sep=""),tolower(colnames(my.orig.df))))>0){
+      g=grep(paste("^",tolower(colnames(my.new.df)[i]),"$",sep=""),tolower(colnames(my.orig.df)))
       attributes(my.new.df[[i]])=attributes(my.orig.df[[g]])
     }else{
       print(paste(colnames(my.new.df)[i],"does not have a match."))
@@ -524,4 +524,47 @@ quick.ROC=function(my.glm,title="ROC Curve",cutoff=0.5,do.plot=T){
 
 quick.ROC.diag=function(my.glm,vals){
   return(t(sapply(vals,quick.tasks::quick.ROC,my.glm=my.glm,do.plot=F,title="ROC Curve")))
+}
+
+
+#' Quick SAS Factor Labels
+#'
+#' Why should you have to type them? A dialog will come up to ask you for the file.
+#'
+#' @param my.df Data frame to get the new information
+#'
+#' @return Dataframe with label information
+#' @export
+#'
+
+quick.SAS.labels=function(my.df){
+  stupid.sas=file.choose()
+  stupid.sas.commands=readLines(stupid.sas)
+  sas.line=1
+  while(sas.line<length(stupid.sas.commands)){
+    if({length(grep(";",stupid.sas.commands[sas.line]))>0} | {length(grepl("^\\s*$",stupid.sas.commands[sas.line]))>0}){
+      #Do nothing
+      sas.line=sas.line+1
+    }
+    if(length(grep("value ",stupid.sas.commands[sas.line]))>0){
+      my.temp.line=strsplit(stupid.sas.commands[sas.line]," ")
+      my.var=my.temp.line[[1]][length(my.temp.line[[1]])]
+      my.grep=grep(tolower(paste("^",substr(my.var,1,{nchar(my.var)-1}),"$",sep="")),tolower(names(my.df)))
+
+      #Get labels
+      sas.line=sas.line+1
+      my.factor.num=NULL
+      my.factor.label=NULL
+      while(length(grep(";",stupid.sas.commands[sas.line]))!=1){
+        my.temp.line=strsplit(stupid.sas.commands[sas.line],"\\=")
+        my.factor.num=c(my.factor.num,as.numeric(my.temp.line[[1]][1]))
+        my.factor.label=c(my.factor.label,as.character(substr(my.temp.line[[1]][2],ifelse(is.numeric(my.temp.line[[1]][2][5]),ifelse(is.numeric(my.temp.line[[1]][2][6]),7,6),5),{nchar(my.temp.line[[1]][2])-1})))
+        sas.line=sas.line+1
+      }
+      names(my.factor.num)=my.factor.label
+      if(length(my.grep)>0){
+        attr(my.df[[my.grep]],"labels")=my.factor.num
+      }
+    }
+  }
 }
