@@ -55,6 +55,9 @@ quick.p.val=function(my.table3,p.val.row){
 #'
 #' @param my.model Model to be used
 #' @return List of lists with 3 pieces: null model, pre models, and full models
+#'
+#' @export
+#'
 #' @keywords Explore
 quick.formula=function(my.model,my.envir){
   #### Split and get pieces

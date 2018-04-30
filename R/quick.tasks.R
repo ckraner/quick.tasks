@@ -1161,3 +1161,61 @@ quick.lavaan = function(myfit) {
   }
   options(width = prev.width)
 }
+
+
+
+#' Survey designs for multinomial logistic functions.
+#'
+#' The "survey" package does not directly compute designs with multinomial functions.
+#' Instead, replicate weights must be computed and applied tediously to every function.
+#' This wrapper function will compute the major pieces of information using your design.
+#'
+#' @param my.formula Formula to be used
+#' @param design Design to be used
+#' @param my.df Dataframe
+#' @param type Type of repetition function. see svrepdesign for more info (default: bootstrap)
+#' @param replicates Number of replications to use (default: 10)
+#'
+#' @return List of: table of beta, z, probability; ANODE table; omnibus test; Pseudo R-2 values
+#' @export
+#'
+
+quick.multinom.survey=function(my.formula,design,my.df,type="bootstrap",replicates=10){
+  ### Replicates use based on https://rpubs.com/corey_sparks/58926 who cites survey package author.
+  library(nnet)
+  library(AER)
+  library(survey)
+  library(pscl)
+
+  #### Make intercept formula
+  my.formula=as.character(my.formula)
+  my.base.form=paste(my.formula[2],my.formula[1],"1")
+  my.formula=paste(my.formula[2],my.formula[1],my.formula[3])
+
+  #### Make normal formulas to take df
+  temp.mult=multinom(as.formula(my.formula),trace=FALSE,data=my.df)
+  temp.mult.null=multinom(as.formula(my.base.form),trace=FALSE,data=my.df)
+  mult.df=temp.mult$edf
+  mult.null.df=temp.mult.null$edf
+  mult.df.change=mult.df-mult.null.df
+
+  #### Make "replicate weights"
+  des.rep=as.svrepdesign(design,type="bootstrap",replicates=10)
+
+  #### Get null deviance
+  mdev.null=as.table(withReplicates(des.rep,substitute(deviance(multinom(eval(as.formula(my.base.form),envir = .GlobalEnv),weights=.weights,trace=F)))))
+
+  #### Get everything from new model
+  mfitcoef=as.table(withReplicates(des.rep,substitute(lmtest::coeftest(multinom(eval(as.formula(my.formula),envir = .GlobalEnv),weights=.weights,trace=F)))))
+  mdev=as.table(withReplicates(des.rep,substitute(deviance(multinom(eval(as.formula(my.formula),envir = .GlobalEnv),weights=.weights,trace=F)))))
+  mcar=as.table(withReplicates(des.rep,substitute(as.matrix(car::Anova(multinom(eval(as.formula(my.formula),envir = .GlobalEnv),weights=.weights,trace=F),type=3)))))
+  #mconfint=as.table(withReplicates(des.rep,substitute(confint(multinom(eval(as.formula(my.formula),envir = .GlobalEnv),weights=.weights,trace=F)))))
+  mpr2=as.table(withReplicates(des.rep,substitute(pscl::pR2(multinom(eval(as.formula(my.formula),envir = .GlobalEnv),weights=.weights,trace=F)))))
+
+  #### Get omnibus chi square change
+  #### Still using central distribution
+  dev.change=as.numeric(mdev-mdev.null)
+  dev.p=pchisq(dev.change,mult.df.change)
+
+  return(list(mfitcoef,mcar,list(as.numeric(mdev),as.numeric(mdev.null),dev.change,dev.p),mpr2))
+}
