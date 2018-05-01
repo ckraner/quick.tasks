@@ -1,0 +1,100 @@
+---
+title: "Using quick.tasks"
+author: "Chris Kraner"
+date: "May 1, 2018"
+output: 
+  html_document:
+    toc: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+In this short document, I will show you the workflow I have created to get data ready for analysis. This is the first release, and I would love to hear your feedback. ckraner19@gmail.com
+
+## Purpose
+SPSS attributes were added by the R Studio team, but are not easily worked with. They disappear when you are making subsets, and the label information does not easily get picked up by the factor commands. Due to this, a substantial part of the code in any of my analyses has been getting the information that was originally in the SPSS or SAS data set and putting it in a way that R will work with it correctly. This is silly, and so over the past year I have been working on a suite of functions to aid in data preparation and screening, focusing on making as much with a GUI as possible. Unfortunately, I am still working out some issues with stats.explor.r, my all-in-one GUI that will run analyses, but the amount of time already saved is worth using these packages.
+  
+In addition, many common tests for our statistical analyses are one off commands that require several lines but very little differing input. There are several wrapper functions over other tests for things like ROC curves, VIM graphs, and multinomial regression with complex survey designs. You will also find an interface for creating tables from regressions, but I need to update the format to make them APA. For fast analyses, this can be called and has options for VIF.
+
+## Installation
+
+These pieces are still in development, so you will have to install off of Git Hub. In order to do this, you need the package `devtools`. Run the following line:
+
+```
+install.packages("devtools")
+```
+
+Then you can install the two packages from my Git Hub. I don't have all the required packages listed for some of the newer functions, so from time to time you may get an error about a package you need to install from Cran-R.
+
+```
+devtools::install_github("ckraner/quick.tasks")
+devtools::install_github("ckraner/stats.explor.r")
+```
+
+## Basic Idea
+
+So your end goal is going to be getting your subset ready to go into `label.explor.r` in the `stats.explor.r` package. This will go through and let you create your factors, change factor names, make ordered, remove specified values, and performs several other tweaks and fixes to make your data frame more easily usable.
+
+To motivate you, lets load the Electric2.sav data frame and open it with `label.explor.r`. I was not able to save it within the package, so it should have come in the e-mail you received along with this pdf. Once you have done that, run the following:
+
+```
+my.df=stats.explor.r::label.explor.r(Electric2,"CASEID")
+```
+**Note: ** If that doesn't run, make "CASEID" all lower case. One of the peculiarities with R is that it is not consistent with whether names get imported all upper or all lower.
+
+Then you can have all the factors made and the labels imported as easily as this!
+![GIF](figure/label2.gif)
+
+This example was over-simplified, and besides for the data sets you receive in class you will have to do a little more before hand. However, it highlights the features nicely. 
+
+* Automatic Mode
+    + Choose "Select All" to select all variables
+    + "Update" so that they are selected and displayed
+    + Check to make sure all the variables you want as factors are lit up green
+    + Click "Make All Factors"
+    + Click "Save"
+  
+* Manual Mode
+    + Choose factors you would like by check boxes
+    + "Update" so that they are selected and displayed
+    + Use the + sign to open each variable. You can then remove values that shouldn't be there (Add in box and click "Make NA"), change the name of the variable, and in the second tab check factor level labels and make it a regular or ordered factor (ordered by clicking "Is Ordered?" check box)
+    + Repeat for all variables of interest
+    + Click "Save"
+    
+When you do this, `label.explor.r` will create a new data frame for you with the variables selected and create your factors for you. R has a habit of needing variables both as factors and numeric depending on the test, so all variables are first created as numeric. This includes those coded as Y/N. They will be recoded as 0/1 variables. Factors then have the ending "_F" and ordered factors "_O". From this point, analyses should come out with the right factor names and recoding and re-leveling can happen on this data frame.
+
+**Remember** Many exploratory functions and correlations require subsets of the original, numeric variables. It is suggested you create a subset without any factors having "_F" or "_O" after using `label.explor.r`.
+
+### `label.explor.r` Options
+There are really only two options of interest at the moment. More may or may not need to be added.
+* `caseid` For no other reason than I started this in a class where caseid's seemed very important, I force having one variable that is immutable and gets added right back on to the data frame at the end. You can make a dummy row if need be.
+* `mycutoff` How many levels can a variable have if we want to consider it a factor? Default setting is 5.
+
+Please check `?stats.explor.r::label.explor.r` for if there are further options and information.
+
+## Real World Use
+In the real world, data sets will not be that simple. In the `quick.tasks` package, I added several functions to fix common issues. Most have some sort of help file, but I apologize if they are not very complete. The use should be pretty self-evident, however.
+
+* `quick.attribs(my.new.df,my.orig.df)` R doesn't transfer the attributes through subsets and things of the like very well. This will transfer everything back. It also reports back what variables did not have a match in the original set, and thus did not get their attributes back.
+* `quick.to.na(my.df, nums)` If there is a consistent number that needs to be removed from a data frame (like -9), you can use this function to remove it from all variables at once.
+* `quick.na.row(my.df)` Will remove all rows where only NA responses. **Note:** Can be ran whenever needed.
+* `quick.SAS.labels(my.df)` Still in progress, but had a data frame that only had factor label information in the SAS setup file. This will read that in and assign them. Sometimes cuts off first letter. Will ask what file to open when run.
+
+
+## Other Helpful Functions
+Some other helpful functions when starting with a data set:
+
+* `quick.VIM(my.df)` Wrapper for `VIM` aggregate. Will show pattern of missing values, as well as list the percent missing for each variable.
+* `quick.search(my.df,partial)` Look for variable names by partial stub. For example, q1 gets q18, q111, etc etc.
+* `quick.heat(my.df)` Heat map of correlations
+* `quick.grab()` To grab whatever plot or graphic is in the Plots window and save it to a variable for later.
+
+A few others that have started to come up along the way:
+
+* `quick.ROC(my.model)` Creates a ROC curve using the `ROCS` package along with the cutoff, sensitivity, specificity, and area under the curve (predictive percentage).
+* `quick.ROC.diag(my.glm,seq(0.4,0.6,by=0.05))` Check specificity, sensitivity, AUC for different cutoffs. `seq()` creates the sequence of cutoff values, or can put in with a `c()` list.
+* `quick.contrast(my.model,my.type,adjustment="bonferroni")` Will output the full contrast set, not levels-1. my.type can be `lm` `glm` `ord` or `manova`.
+* `quick.lavaan(my.lavaan)` Simple interaction interface to make quick HTML tables of lavaan output rather than seeing long list. Eventually updated, but outputs for SEM vary too much.
+* `quick.reg(my.model,VIF=F)` This will make very nice tables, however they are not APA ready. All the information is correct, but may not be in the places you are most accustomed to look for it.

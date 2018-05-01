@@ -1,0 +1,29 @@
+\documentclass{article}
+\documentclass{article}
+\usepackage{multicol}
+\usepackage[colorlinks=TRUE,linkcolor=black,urlcolor=blue,bookmarks=FALSE]{hyperref}
+%\usepackage[all]{hypcap}
+\usepackage{wrapfig}
+\usepackage{color}
+\usepackage[margin=1.0in]{geometry}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{parcolumns}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric,automata, positioning, arrows}
+\graphicspath{ {figure/} }
+\newcommand{\rpm}{\raisebox{.2ex}{$\scriptstyle\pm$}}
+
+\title{Data Prep Using quick.tasks \\ and stats.explor.r}
+\author{Chris Kraner}
+\date{April 2018}
+
+\begin{document}
+
+\maketitle
+
+
+\end{document}

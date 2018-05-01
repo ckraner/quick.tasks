@@ -1,0 +1,38 @@
+\documentclass{article}
+\usepackage{multicol}
+\usepackage[colorlinks=TRUE,linkcolor=black,urlcolor=blue,bookmarks=FALSE]{hyperref}
+%\usepackage[all]{hypcap}
+\usepackage{wrapfig}
+\usepackage{color}
+\usepackage[margin=1.0in]{geometry}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{parcolumns}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric,automata, positioning, arrows}
+\graphicspath{ {figure/} }
+\newcommand{\rpm}{\raisebox{.2ex}{$\scriptstyle\pm$}}
+
+\title{Data Prep Using quick.tasks \\ and stats.explor.r}
+\author{Chris Kraner}
+\date{April 2018}
+
+\begin{document}
+
+\maketitle
+
+\newpage
+
+In this short document, I will show you the workflow I have created to get data ready for analysis. This is the first release, and I would love to hear your feedback. ckraner19@gmail.com
+
+\section{Purpose}
+SPSS attributes were added by the RStudio team, but are not easily worked with. They disappear when you are making subsets, and the label information does not easily get picked up by the factor commands. Due to this, a substantial part of the code in any of my analyses has been getting the information that was originally in the SPSS or SAS dataset and putting it in a way that R will work with it correctly. This is silly, and so over the past year I have been working on a suite of functions to aid in data preperation and screening, focusing on making as much with a GUI as possible.
+
+In addition, many common tests for our statistical analyses are one off commands that require several lines but very little differing input. There are several wrapper functions over other tests for things like ROC curves, VIM graphs, and multinomial regression with complex survey designs. You will also find an interface for creating tables from regressions, but I need to update the format to make them APA. For fast analyses, this can be called and has options for VIF.
+
+\section{Installation}
+
+\end{document}
