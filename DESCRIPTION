@@ -19,7 +19,12 @@ Imports: pixiedust,
     phia,
     reshape2,
     grid,
-    ggplot2
+    ggplot2,
+    shiny,
+    shinyjs,
+    shinydashboard,
+    VIM,
+    ROCS
 Suggests: ordinal,
     ordinal
 Roxygen: list(markdown = TRUE)

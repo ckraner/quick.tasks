@@ -2,9 +2,11 @@
 title: "Using quick.tasks"
 author: "Chris Kraner"
 date: "May 1, 2018"
-output: 
+output:
   html_document:
-    toc: TRUE
+    toc: yes
+  pdf_document:
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -30,7 +32,6 @@ Then you can install the two packages from my Git Hub. I don't have all the requ
 
 ```
 devtools::install_github("ckraner/quick.tasks")
-devtools::install_github("ckraner/stats.explor.r")
 ```
 
 ## Basic Idea
@@ -40,7 +41,7 @@ So your end goal is going to be getting your subset ready to go into `label.expl
 To motivate you, lets load the Electric2.sav data frame and open it with `label.explor.r`. I was not able to save it within the package, so it should have come in the e-mail you received along with this pdf. Once you have done that, run the following:
 
 ```
-my.df=stats.explor.r::label.explor.r(Electric2,"CASEID")
+my.df=quick.tasks::label.explor.r(Electric2,"CASEID")
 ```
 **Note: ** If that doesn't run, make "CASEID" all lower case. One of the peculiarities with R is that it is not consistent with whether names get imported all upper or all lower.
 
@@ -72,7 +73,7 @@ There are really only two options of interest at the moment. More may or may not
 * `caseid` For no other reason than I started this in a class where caseid's seemed very important, I force having one variable that is immutable and gets added right back on to the data frame at the end. You can make a dummy row if need be.
 * `mycutoff` How many levels can a variable have if we want to consider it a factor? Default setting is 5.
 
-Please check `?stats.explor.r::label.explor.r` for if there are further options and information.
+Please check `?quick.tasks::label.explor.r` for if there are further options and information.
 
 ## Real World Use
 In the real world, data sets will not be that simple. In the `quick.tasks` package, I added several functions to fix common issues. Most have some sort of help file, but I apologize if they are not very complete. The use should be pretty self-evident, however.
