@@ -24,7 +24,7 @@ Imports: pixiedust,
     shinyjs,
     shinydashboard,
     VIM,
-    ROCS
+    ROCR
 Suggests: ordinal,
     ordinal
 Roxygen: list(markdown = TRUE)

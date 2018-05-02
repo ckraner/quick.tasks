@@ -1219,3 +1219,52 @@ quick.multinom.survey=function(my.formula,design,my.df,type="bootstrap",replicat
 
   return(list(mfitcoef,mcar,list(as.numeric(mdev),as.numeric(mdev.null),dev.change,dev.p),mpr2))
 }
+
+
+#' Finish imputation for complex data
+#'
+#' MICE creates a mids file. This does not always work with R analyses, such as for ordinal.
+#' Therefore, this "averages" the responses of each run for each variable and places them back
+#' in the data frame. Works with factors by taking label information from original data frame,
+#' turning the factors to numbers, and finding the average that way.
+#'
+#' @param imputed.df Mids object from MICE
+#' @param my.new.df Data frame that has been through label.explor.r
+#'
+#' @return Data frame with imputed values averaged and replaced.
+#' @export
+#'
+#' @examples
+quick.MICE=function(imputed.df,my.new.df){
+  #### Get rowsums for non-binary variables
+  #### Unfortunately, does not store variable names.
+  for(i in 1:length(names(imputed.df$imp))){
+    if(!is.null(imputed.df$imp[[i]])){
+      #### Check for factor
+      if(length(grep("_F",names(imputed.df$imp)[i]))>0 | length(grep("_O",names(imputed.df$imp)[i]))>0){
+        this.grep=grep(substr(names(imputed.df$imp)[i],1,{nchar(names(imputed.df$imp)[i])-2}),names(my.new.df))
+        the.names=attr(my.new.df[[this.grep]],"labels")
+        the.levels=trimws(names(the.names))
+        my.sums=tryCatch(round(rowMeans(
+          sapply(imputed.df$imp[[i]][1,],function(y){
+            sapply(imputed.df$imp[[i]][,y],function(x){
+              as.numeric(the.names[grep(trimws(as.character(x)),the.levels)][1])})}),na.rm=T)),
+          error = function(e){warning(e);NULL})
+        #print(my.sums)
+      }else{
+        #### If regular number
+        this.grep=grep(names(imputed.df$imp)[i],names(my.new.df))
+        my.sums=rowMeans(imputed.df$imp[[i]],na.rm=T)
+      }
+      if(!is.null(my.sums)){
+        names(my.sums)=rownames(imputed.df$imp[[i]])
+        for(j in 1:length(my.sums)){
+          my.new.df[rownames(my.sums)[j],i]=my.sums[j]
+        }
+      }else{
+        print(paste(names(imputed.df$imp)[[i]], "did not work. Please do by hand."))
+      }
+    }
+  }
+  return(my.new.df)
+}
