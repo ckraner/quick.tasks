@@ -1207,6 +1207,9 @@ quick.multinom.survey=function(my.formula,design,my.df,type="bootstrap",replicat
 
   #### Get everything from new model
   mfitcoef=as.table(withReplicates(des.rep,substitute(lmtest::coeftest(multinom(eval(as.formula(my.formula),envir = .GlobalEnv),weights=.weights,trace=F)))))
+  mfitcoef=as.data.frame(cbind(mfitcoef,exp(mfitcoef[,1]),{1/exp(mfitcoef[,1])}))
+  names(mfitcoef)=c(names(mfitcoef)[1:4],"OR","1/OR")
+  mfitcoef=mfitcoef[,c(1,2,5,6,3,4)]
   mdev=as.table(withReplicates(des.rep,substitute(deviance(multinom(eval(as.formula(my.formula),envir = .GlobalEnv),weights=.weights,trace=F)))))
   mcar=as.table(withReplicates(des.rep,substitute(as.matrix(car::Anova(multinom(eval(as.formula(my.formula),envir = .GlobalEnv),weights=.weights,trace=F),type=3)))))
   #mconfint=as.table(withReplicates(des.rep,substitute(confint(multinom(eval(as.formula(my.formula),envir = .GlobalEnv),weights=.weights,trace=F)))))
@@ -1241,8 +1244,8 @@ quick.MICE=function(imputed.df,my.new.df){
   for(i in 1:length(names(imputed.df$imp))){
     if(!is.null(imputed.df$imp[[i]])){
       #### Check for factor
-      if(length(grep("_F",names(imputed.df$imp)[i]))>0 | length(grep("_O",names(imputed.df$imp)[i]))>0){
-        this.grep=grep(substr(names(imputed.df$imp)[i],1,{nchar(names(imputed.df$imp)[i])-2}),names(my.new.df))
+      if(length(grep("_F$",names(imputed.df$imp)[i]))>0 | length(grep("_O$",names(imputed.df$imp)[i]))>0){
+        this.grep=grep(paste("^",substr(names(imputed.df$imp)[i],1,{nchar(names(imputed.df$imp)[i])-2}),"$",sep=""),names(my.new.df))
         the.names=attr(my.new.df[[this.grep]],"labels")
         the.levels=trimws(names(the.names))
         my.sums=tryCatch(round(rowMeans(
@@ -1253,13 +1256,14 @@ quick.MICE=function(imputed.df,my.new.df){
         #print(my.sums)
       }else{
         #### If regular number
-        this.grep=grep(names(imputed.df$imp)[i],names(my.new.df))
+        this.grep=grep(paste("^",names(imputed.df$imp)[i],"$",sep=""),names(my.new.df))
         my.sums=rowMeans(imputed.df$imp[[i]],na.rm=T)
       }
       if(!is.null(my.sums)){
         names(my.sums)=rownames(imputed.df$imp[[i]])
         for(j in 1:length(my.sums)){
-          my.new.df[rownames(my.sums)[j],i]=my.sums[j]
+          copy.grep=grep(as.numeric(names(my.sums)[j]),as.numeric(rownames(my.new.df)))
+          my.new.df[copy.grep,this.grep]=as.numeric(my.sums[j])
         }
       }else{
         print(paste(names(imputed.df$imp)[[i]], "did not work. Please do by hand."))
