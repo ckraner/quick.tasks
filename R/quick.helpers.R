@@ -35,6 +35,7 @@ quick.eq.check=function(val.1,val.2){
 #'
 #' @param my.model Model to be used
 #' @return List of lists with 3 pieces: null model, pre models, and full models
+#' @export
 #' @keywords Explore
 quick.p.val=function(my.table3,p.val.row){
   for(i in 1:dim(my.table3)[1]){

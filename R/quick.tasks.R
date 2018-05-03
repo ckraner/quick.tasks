@@ -1224,12 +1224,9 @@ quick.multinom.survey=function(my.formula,design,my.df,type="bootstrap",replicat
 }
 
 
-#' Finish imputation for complex data
+#' NOT NEEDED
 #'
-#' MICE creates a mids file. This does not always work with R analyses, such as for ordinal.
-#' Therefore, this "averages" the responses of each run for each variable and places them back
-#' in the data frame. Works with factors by taking label information from original data frame,
-#' turning the factors to numbers, and finding the average that way.
+#' Has some good code that can be reused later. Not needed atm.
 #'
 #' @param imputed.df Mids object from MICE
 #' @param my.new.df Data frame that has been through label.explor.r

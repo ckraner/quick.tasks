@@ -2,7 +2,7 @@
 % Please edit documentation in R/quick.tasks.R
 \name{quick.MICE}
 \alias{quick.MICE}
-\title{Finish imputation for complex data}
+\title{NOT NEEDED}
 \usage{
 quick.MICE(imputed.df, my.new.df)
 }
@@ -15,8 +15,5 @@ quick.MICE(imputed.df, my.new.df)
 Data frame with imputed values averaged and replaced.
 }
 \description{
-MICE creates a mids file. This does not always work with R analyses, such as for ordinal.
-Therefore, this "averages" the responses of each run for each variable and places them back
-in the data frame. Works with factors by taking label information from original data frame,
-turning the factors to numbers, and finding the average that way.
+Has some good code that can be reused later. Not needed atm.
 }
