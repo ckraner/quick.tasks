@@ -1224,48 +1224,319 @@ quick.multinom.survey=function(my.formula,design,my.df,type="bootstrap",replicat
 }
 
 
-#' NOT NEEDED
+
+
+#' Make ANODE table of pooled values
 #'
-#' Has some good code that can be reused later. Not needed atm.
+#' Helper for pooled multinomial analyses analyses
 #'
-#' @param imputed.df Mids object from MICE
-#' @param my.new.df Data frame that has been through label.explor.r
+#' @param my.mult multinomial mira dataframe
+#' @param task ANODE for ANODE table, coef for z-table, R2 for pR2
+#' @param type Type for car::Anova (default=3)
 #'
-#' @return Data frame with imputed values averaged and replaced.
+#' @return Pooled values for task
+#' @export
+#'
+
+quick.multi.anode=function(my.mult,task,type=3){
+
+
+  #my.mult=with(imputed.df,substitute(nnet::multinom(eval(as.formula(my.formula),envir = .GlobalEnv),weights=eval(weight))))
+  if(task=="ANODE"){
+  x.man=lapply(my.mult$analyses,car::Anova,type=type)
+  ncols=3
+  }else if(task=="coef"){
+    library(AER)
+    x.man=lapply(my.mult$analyses,lmtest::coeftest)
+    ncols=4
+  }else if(task=="R2"){
+    library(pscl)
+    x.man=invisible(lapply(my.mult$analyses,pscl::pR2))
+    x.man=x.man
+    ncols=6
+    }else{
+    warning("Not supported...yet!")
+  }
+  my.Anode=NULL
+  for(j in 1:dim(x.man[[1]])[1]){
+    my.val=0
+    for(i in 1:length(x.man)){
+      my.val=my.val+x.man[[i]][j,1:ncols]
+    }
+    my.val=my.val/length(x.man)
+    if(is.null(my.Anode)){
+      my.Anode=my.val
+    }else{
+      my.Anode=rbind(my.Anode,my.val)
+    }
+
+  }
+  if(task=="coef"){
+    rownames(my.Anode)=rownames(x.man[[1]])
+  }
+  return(my.Anode)
+}
+
+
+#' Preform weighted multnomial regression with imputed data frames
+#'
+#' This will perform multinomial logistic regression with the option of including weights
+#' using an imputed data frame from the MICE package. Returns ANODE table, z-table, deviance,
+#' partial R2 statistics, and the analyses. Can return null model as well. Can be combined with
+#' quick.table.multi.model for omnibus table of multiple models.
+#'
+#' @param my.formula Formula to test. Cannot test null model, but can have it returned with any other model
+#' @param weights Weights to use
+#' @param imputed.df Imputed df from MICE
+#' @param include.null Include the null model as well?
+#' @param round If want values rounded. Default: T
+#'
+#' @return object of class "pooled", "multinom"
 #' @export
 #'
 #' @examples
-quick.MICE=function(imputed.df,my.new.df){
-  #### Get rowsums for non-binary variables
-  #### Unfortunately, does not store variable names.
-  for(i in 1:length(names(imputed.df$imp))){
-    if(!is.null(imputed.df$imp[[i]])){
-      #### Check for factor
-      if(length(grep("_F$",names(imputed.df$imp)[i]))>0 | length(grep("_O$",names(imputed.df$imp)[i]))>0){
-        this.grep=grep(paste("^",substr(names(imputed.df$imp)[i],1,{nchar(names(imputed.df$imp)[i])-2}),"$",sep=""),names(my.new.df))
-        the.names=attr(my.new.df[[this.grep]],"labels")
-        the.levels=trimws(names(the.names))
-        my.sums=tryCatch(round(rowMeans(
-          sapply(imputed.df$imp[[i]][1,],function(y){
-            sapply(imputed.df$imp[[i]][,y],function(x){
-              as.numeric(the.names[grep(trimws(as.character(x)),the.levels)][1])})}),na.rm=T)),
-          error = function(e){warning(e);NULL})
-        #print(my.sums)
-      }else{
-        #### If regular number
-        this.grep=grep(paste("^",names(imputed.df$imp)[i],"$",sep=""),names(my.new.df))
-        my.sums=rowMeans(imputed.df$imp[[i]],na.rm=T)
-      }
-      if(!is.null(my.sums)){
-        names(my.sums)=rownames(imputed.df$imp[[i]])
-        for(j in 1:length(my.sums)){
-          copy.grep=grep(as.numeric(names(my.sums)[j]),as.numeric(rownames(my.new.df)))
-          my.new.df[copy.grep,this.grep]=as.numeric(my.sums[j])
-        }
-      }else{
-        print(paste(names(imputed.df$imp)[[i]], "did not work. Please do by hand."))
-      }
+quick.pooled.multinom=function(my.formula,weights,imputed.df,include.null=F,round=T){
+  library(mice)
+  library(nnet)
+  library(AER)
+  library(pscl)
+
+  #### Make intercept formula
+  imputed.df.complete=complete(imputed.df)
+  my.formula=as.character(my.formula)
+  my.base.form=paste(my.formula[2],my.formula[1],"1")
+  my.formula=paste(my.formula[2],my.formula[1],my.formula[3])
+
+
+  my.mult1=with(imputed.df,nnet::multinom(eval(parse(text=as.character(my.base.form))),weights=weight,trace=F))
+  null.dev=mean(sapply(my.mult1$analyses,deviance))
+  null.df=nnet::multinom(rschl_F~1,trace=F,data=imputed.df.complete)$edf
+
+
+  my.mult=with(imputed.df,nnet::multinom(eval(parse(text=my.formula)),weights=weight,trace=F))
+  my.mult.anode=quick.tasks::quick.multi.anode(my.mult,task = "ANODE")
+  my.mult.coef=quick.tasks::quick.multi.anode(my.mult,task = "coef")
+  #quick.tasks::quick.multi.anode(my.mult2,task = "R2")
+  my.mult.r2=lapply(my.mult$analyses,pscl::pR2)
+  my.mult.r2t=t(as.data.frame(my.mult.r2))
+  my.mult.r21=apply(my.mult.r2t,2,mean)
+
+  my.mult.dev=mean(sapply(my.mult$analyses,deviance))
+  df.orig=sum(my.mult.anode[,2])
+  my.mult.dev.change=my.mult.dev-null.dev
+  df.change=df.orig-null.df
+  my.p=pchisq(my.mult.dev.change,df.change)
+
+  my.mult.coef=cbind(my.mult.coef,exp(my.mult.coef[,1]),1/exp(my.mult.coef[,1]))
+
+  my.mult.coef=my.mult.coef[,c(1,2,5,6,3,4)]
+  if(round){
+    my.table=quick.tasks::quick.p.val(my.mult.coef,6)
+    my.table[,c(1,2,3,4,5)]=sapply(my.table[,c(1,2,3,4,5)],function(x){round(as.numeric(x),3)})
+  }
+  #my.table[,2]=formatC(my.table[,2], format = "e", digits = 2)
+  colnames(my.table)=c("Estimate","Std. Error","Odds Ratio","1/OR","z Value",'Pr(>|z|)')
+
+  my.anode.tableR=cbind(my.mult.anode,round({{my.mult.anode[,1]/my.mult.dev}},4))
+  my.anode.tableR=rbind(my.anode.tableR,c(abs(my.mult.dev.change),df.change,my.p,my.mult.r21[4]))
+  rownames(my.anode.tableR)[{length(rownames(my.anode.tableR))}]="Total Change"
+  colnames(my.anode.tableR)[4]="McFadden"
+  if(round){
+    my.anode.tableR=quick.tasks::quick.p.val(my.anode.tableR,3)
+    my.anode.tableR[,1]=round(as.numeric(my.anode.tableR[,1]),2)
+  }
+  my.stats=c(my.mult.dev,df.orig,my.mult.dev.change,df.change,my.p)
+  names(my.stats)=c("Deviance","df","Deviance change","Df Change","p-val")
+
+  my.return=NULL
+  my.return$ANODE=my.anode.tableR
+  my.return$zTable=my.table
+  my.return$dev=my.stats
+  my.return$pR2=my.mult.r21
+  my.return$analyses=my.mult$analyses
+  if(include.null){
+  my.return$null=my.mult1$analyses
+  class(my.return)=c("list","pooled","multinom","null")
+  }else{
+  class(my.return)=c("list","pooled","multinom")
+  }
+  return(my.return)
+}
+
+
+
+#' Print method for multinom tables
+#'
+#' @param my.print My print
+#'
+#' @return printed table
+#' @export
+#'
+print.multinom=function(my.print){
+  print(my.print$zTable)
+}
+
+
+
+
+#' Create multinomial omnibus tables
+#'
+#' @param ... List of models to be combined. One must have null model.
+#'
+#' @return Omnibus table
+#' @export
+#'
+quick.table.multi.model=function(...){
+  arguments=list(...)
+  flag=0
+
+  #Get null model
+  for(i in 1:length(arguments)){
+    if(sum(class(arguments[[i]])=="null")==1){
+      null.models=arguments[[i]]$null
+      i=length(arguments)
+      flag=1
     }
   }
-  return(my.new.df)
+  if(flag==0){
+    stop("No model has the null model.")
+  }
+  null.dev=sapply(null.models,deviance)
+  null.df=null.models[[1]]$edf
+
+
+  my.table=NULL
+  ### Make list of deviance, df to order
+  for(i in 1:length(arguments)){
+    dev=mean(sapply(arguments[[i]]$analyses,deviance))
+    df=arguments[[i]]$analyses[[1]]$edf
+    if(i==1){
+      my.table=c(i,dev,df,NA,NA,NA)
+    }else{
+      my.table=rbind(my.table,c(i,dev,df,NA,NA,NA))
+    }
+  }
+  my.table=as.data.frame(my.table)
+  my.table=my.table[order(my.table[[3]]),]
+
+  ### Make actual table
+  for(i in 1:length(arguments)){
+    if(i==1){
+      dev.change=my.table[i,2]-mean(null.dev)
+      df.change=my.table[i,3]-null.df
+    }else{
+      dev.change=my.table[i,2]-my.table[i-1,2]
+      df.change=my.table[i,3]-my.table[i-1,3]
+    }
+    my.table[i,4:6]=c(dev.change,df.change,pchisq(dev.change,df.change))
+  }
+  my.table=rbind(c(0,mean(null.dev),null.df,NA,NA,NA),my.table)
+
+  colnames(my.table)=c("Model","Deviance","df","Dev.Change","df.Change","p-val")
+  rownames(my.table)=my.table[[1]]
+  my.table[[1]]=NULL
+
+  my.table=quick.tasks::quick.p.val(my.table,5)
+  my.table[,3]=round(my.table[,3],2)
+
+
+  return(my.table)
 }
+#' #' NOT NEEDED
+#' #'
+#' #' Has some good code that can be reused later. Not needed atm.
+#' #'
+#' #' @param imputed.df Mids object from MICE
+#' #' @param my.new.df Data frame that has been through label.explor.r
+#' #'
+#' #' @return Data frame with imputed values averaged and replaced.
+#' #' @export
+#' #'
+#' #' @examples
+#' quick.MICE=function(imputed.df,my.new.df){
+#'   #### Get rowsums for non-binary variables
+#'   #### Unfortunately, does not store variable names.
+#'   for(i in 1:length(names(imputed.df$imp))){
+#'     if(!is.null(imputed.df$imp[[i]])){
+#'       #### Check for factor
+#'       if(length(grep("_F$",names(imputed.df$imp)[i]))>0 | length(grep("_O$",names(imputed.df$imp)[i]))>0){
+#'         this.grep=grep(paste("^",substr(names(imputed.df$imp)[i],1,{nchar(names(imputed.df$imp)[i])-2}),"$",sep=""),names(my.new.df))
+#'         the.names=attr(my.new.df[[this.grep]],"labels")
+#'         the.levels=trimws(names(the.names))
+#'         my.sums=tryCatch(round(rowMeans(
+#'           sapply(imputed.df$imp[[i]][1,],function(y){
+#'             sapply(imputed.df$imp[[i]][,y],function(x){
+#'               as.numeric(the.names[grep(trimws(as.character(x)),the.levels)][1])})}),na.rm=T)),
+#'           error = function(e){warning(e);NULL})
+#'         #print(my.sums)
+#'       }else{
+#'         #### If regular number
+#'         this.grep=grep(paste("^",names(imputed.df$imp)[i],"$",sep=""),names(my.new.df))
+#'         my.sums=rowMeans(imputed.df$imp[[i]],na.rm=T)
+#'       }
+#'       if(!is.null(my.sums)){
+#'         names(my.sums)=rownames(imputed.df$imp[[i]])
+#'         for(j in 1:length(my.sums)){
+#'           copy.grep=grep(as.numeric(names(my.sums)[j]),as.numeric(rownames(my.new.df)))
+#'           my.new.df[copy.grep,this.grep]=as.numeric(my.sums[j])
+#'         }
+#'       }else{
+#'         print(paste(names(imputed.df$imp)[[i]], "did not work. Please do by hand."))
+#'       }
+#'     }
+#'   }
+#'   return(my.new.df)
+#' }
+
+#' #' Title
+#' #'
+#' #' @param my.formula
+#' #' @param imputed.df
+#' #'
+#' #' @return
+#' #' @export
+#' #'
+#' #' @examples
+#' quick.multi=function(my.formula,imputed.df){
+#'   library(mice)
+#'   library(nnet)
+#'   library(AER)
+#'   library(pscl
+#'   )
+#'
+#'   #### Make intercept formula
+#'   imputed.df.complete=complete(imputed.df)
+#'   my.formula=as.character(my.formula)
+#'   my.base.form=paste(my.formula[2],my.formula[1],"1")
+#'   my.formula=paste(my.formula[2],my.formula[1],my.formula[3])
+#'
+#'
+#'   my.mult1=with(imputed.df,nnet::multinom(eval(parse(text=as.character(my.base.form))),weights=weight,trace=F))
+#'   null.dev=mean(sapply(my.mult1$analyses,deviance))
+#'   null.df=nnet::multinom(rschl_F~1,trace=F,data=imputed.df.complete)$edf
+#'
+#'
+#'   my.mult=with(imputed.df,nnet::multinom(eval(parse(text=as.character(my.formula))),weights=weight),trace=F)
+#'   my.mult4.anode=quick.tasks::quick.multi.anode(my.mult,task = "ANODE")
+#'   my.mult4.coef=quick.tasks::quick.multi.anode(my.mult,task = "coef")
+#'   #quick.tasks::quick.multi.anode(my.mult2,task = "R2")
+#'   my.mult4.r2=lapply(my.mult$analyses,pscl::pR2)
+#'   my.mult4.r2t=t(as.data.frame(my.mult4.r2))
+#'   my.mult4.r21=apply(my.mult4.r2t,2,mean)
+#'
+#'   my.mult4.dev=mean(sapply(my.mult$analyses,deviance))
+#'   df.change4=sum(my.mult4.anode[,2])
+#'   my.mult4.dev.change=my.mult4.dev-null.dev
+#'   df.change4=df.change4-null.df
+#'   my.p=pchisq(my.mult4.dev.change,df.change4)
+#'
+#'   my.mult4.coef[5]=exp(my.mult4.coef[,1])
+#'   my.mult4.coef[6]=1/exp(my.mult4.coef[,1])
+#'   my.mult4.coef=my.mult4.coef[,c(1,2,5,6,3,4)]
+#'   my.table=quick.tasks::quick.p.val(my.mult4.coef,6)
+#'   my.table[,c(1,3,4,5)]=sapply(my.table[,c(1,3,4,5)],function(x){round(as.numeric(x),3)})
+#'   my.table[,2]=formatC(my.table[,2], format = "e", digits = 2)
+#'   colnames(my.table)=c("Estimate","Std. Error","Odds Ratio","1/OR","z Value",'Pr(>|z|)')
+#'
+#'   return(list(my.mult4.anode,my.mult4.coef,my.mult4.r21,list(my.mult4.dev.change,df.change4,my.p)))
+#' }
